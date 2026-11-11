@@ -2,7 +2,7 @@
 
 ## Context
 
-The roadmap (`docs/roadmap.zh-CN.md` lines 100–115) defines M4 as the last gating
+The roadmap (`docs/roadmap.md` (M4 section)) defines M4 as the last gating
 item for the v0.2 release: making `trace_processor_shell` acquisition robust
 against interrupted downloads, local corruption, restricted networks, and
 untested platforms. Current code at `src/download.rs` has three soft spots:
