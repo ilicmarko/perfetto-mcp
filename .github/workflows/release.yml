@@ -1,28 +1,82 @@
 name: Release
 
+# Releases are cut automatically when a commit lands on `main` whose
+# Cargo.toml version has not been released yet. Bump `version` in Cargo.toml
+# and add a `### [X.Y.Z]` section to CHANGELOG.md in the PR; merging it ships
+# the GitHub release (binaries + SHA256SUMS) and the npm packages.
+# Every step is idempotent, so re-running (or `workflow_dispatch`) after a
+# partial failure only fills in what is missing.
+
 on:
   push:
-    tags: ['v*']
+    branches: [main]
   workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Tag to release (e.g. v0.1.0)'
-        required: true
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   CARGO_TERM_COLOR: always
 
 concurrency:
-  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  group: release
+  cancel-in-progress: false
 
 jobs:
+  plan:
+    name: Decide whether to release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.plan.outputs.version }}
+      tag: ${{ steps.plan.outputs.tag }}
+      release_exists: ${{ steps.plan.outputs.release_exists }}
+      npm_published: ${{ steps.plan.outputs.npm_published }}
+      should_release: ${{ steps.plan.outputs.should_release }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - id: plan
+        name: Compare Cargo.toml version with releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          TAG="v$VERSION"
+          NPM_NAME=$(node -p "require('./npm/perfetto-mcp/package.json').name")
+          release_exists=false
+          npm_published=false
+          gh release view "$TAG" >/dev/null 2>&1 && release_exists=true
+          npm view "$NPM_NAME@$VERSION" version >/dev/null 2>&1 && npm_published=true
+          should_release=true
+          if [ "$release_exists" = true ] && [ "$npm_published" = true ]; then
+            should_release=false
+            echo "::notice::$TAG is already released on GitHub and npm; nothing to do."
+          fi
+          if [ "$should_release" = true ] && ! grep -qF "### [$VERSION]" CHANGELOG.md; then
+            echo "::error::Cargo.toml is at $VERSION but CHANGELOG.md has no '### [$VERSION]' section."
+            exit 1
+          fi
+          {
+            echo "version=$VERSION"
+            echo "tag=$TAG"
+            echo "release_exists=$release_exists"
+            echo "npm_published=$npm_published"
+            echo "should_release=$should_release"
+          } >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION release_exists=$release_exists npm_published=$npm_published should_release=$should_release"
+
+  ci:
+    name: CI gate
+    needs: plan
+    if: needs.plan.outputs.should_release == 'true'
+    uses: ./.github/workflows/ci.yml
+
   build:
     name: ${{ matrix.asset_name }}
+    needs: [plan, ci]
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         include:
           - target: x86_64-unknown-linux-musl
@@ -71,14 +125,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.target }}
-          # Don't cache `~/.cargo/bin/`. Prefix-match restore + failed-build
-          # skip-save lets a corrupted `cargo` (e.g. accidentally pointing at
-          # rustup-init from a one-off runner-image quirk) survive forever:
-          # the bad cache fails the next build, which then doesn't save a
-          # replacement. v0.14.0 release was bitten by exactly this on
-          # darwin-arm64 (cache from 2026-04-29 kept failing every release
-          # build through 2026-05-15). 10-20s extra rustup install per run
-          # is cheap insurance vs that silent failure mode.
+          # Don't cache `~/.cargo/bin/`: a corrupted cached `cargo` survives
+          # forever because failed builds skip saving a replacement.
           cache-bin: false
 
       - name: Build
@@ -91,220 +139,135 @@ jobs:
           if [ "${{ runner.os }}" = "Windows" ]; then
             src="${src}.exe"
           fi
-          cp "$src" "${{ matrix.asset_name }}"
+          mkdir -p dist
+          cp "$src" "dist/${{ matrix.asset_name }}"
 
-      - uses: softprops/action-gh-release@v3
+      - name: Check embedded version
+        if: matrix.target != 'x86_64-apple-darwin'
+        shell: bash
+        run: |
+          got=$("dist/${{ matrix.asset_name }}" --version)
+          echo "$got"
+          [ "$got" = "perfetto-mcp-rs ${{ needs.plan.outputs.version }}" ]
+
+      - uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
-          files: ${{ matrix.asset_name }}
-          fail_on_unmatched_files: true
-          # Do NOT enable `generate_release_notes` here — when set on every
-          # matrix job, the action appends a "Full Changelog: ..." line per
-          # job (5x), and force-pushed tag re-runs accumulate more (N x 5).
-          # The publish-notes job below sets the body from CHANGELOG.md
-          # exactly once, idempotently.
+          name: ${{ matrix.asset_name }}
+          path: dist/${{ matrix.asset_name }}
+          if-no-files-found: error
 
-  publish-notes:
-    name: Publish release notes from CHANGELOG
-    needs: build
+  github-release:
+    name: GitHub release
+    needs: [plan, build]
+    if: needs.plan.outputs.release_exists != 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v6
 
-      - name: Extract CHANGELOG section for this tag
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Compute SHA256SUMS
+        working-directory: dist
+        run: sha256sum perfetto-mcp-rs-* | tee SHA256SUMS
+
+      - name: Extract CHANGELOG section
         shell: bash
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
         run: |
-          TAG="${{ github.event.inputs.tag || github.ref_name }}"
-          VERSION="${TAG#v}"
           # Section spans from "### [VERSION]" up to the next "### [" heading.
-          # awk's "\[" in regex literals trips warnings on some gawks and
-          # mismatches on others, so do this with grep + sed instead.
           HEADINGS=$(grep -n '^### \[' CHANGELOG.md)
           START=$(echo "$HEADINGS" | grep -F "### [$VERSION]" | head -1 | cut -d: -f1)
-          if [ -z "$START" ]; then
-            echo "::error::No CHANGELOG entry found for version $VERSION"
-            exit 1
-          fi
           END=$(echo "$HEADINGS" | awk -F: -v s="$START" '$1 > s { print $1 - 1; exit }')
           [ -z "$END" ] && END=$(wc -l < CHANGELOG.md)
           sed -n "${START},${END}p" CHANGELOG.md > release-notes.md
-          echo "Extracted lines $START..$END ($(wc -c < release-notes.md) bytes) for $TAG"
+          echo "Extracted lines $START..$END for $VERSION"
 
-      - name: Overwrite release body
+      - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.plan.outputs.tag }}
         run: |
-          TAG="${{ github.event.inputs.tag || github.ref_name }}"
-          gh release edit "$TAG" --notes-file release-notes.md
+          gh release create "$TAG" dist/* \
+            --target "$GITHUB_SHA" \
+            --title "$TAG" \
+            --notes-file release-notes.md
 
-  update-homebrew-tap:
-    name: Update Homebrew tap formula
-    needs: build
-    runs-on: macos-14
-    steps:
-      # Mint a short-lived installation token via the GitHub App that owns
-      # write access to tooluse-labs/homebrew-tap. Replaces the long-lived
-      # HOMEBREW_TAP_TOKEN PAT (capped at 366 days for fine-grained tokens) —
-      # App-installation tokens auto-rotate per workflow run and the App
-      # credentials themselves never expire. Same pattern as the publish-crate
-      # job's crates.io Trusted Publishing.
-      - uses: actions/create-github-app-token@v3.2.0
-        id: app-token
-        with:
-          app-id: ${{ secrets.HOMEBREW_TAP_APP_ID }}
-          private-key: ${{ secrets.HOMEBREW_TAP_APP_KEY }}
-          owner: tooluse-labs
-          repositories: homebrew-tap
-
-      - uses: actions/checkout@v6
-        with:
-          repository: tooluse-labs/homebrew-tap
-          token: ${{ steps.app-token.outputs.token }}
-          path: tap
-
-      - name: Resolve tag and version
-        id: ver
-        shell: bash
-        run: |
-          TAG="${{ github.event.inputs.tag || github.ref_name }}"
-          VERSION="${TAG#v}"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Download release binaries
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.ver.outputs.tag }}
-        shell: bash
-        run: |
-          mkdir -p dl
-          gh release download "$TAG" \
-            --repo tooluse-labs/perfetto-mcp-rs \
-            --dir dl \
-            --pattern 'perfetto-mcp-rs-darwin-arm64' \
-            --pattern 'perfetto-mcp-rs-darwin-amd64' \
-            --pattern 'perfetto-mcp-rs-linux-arm64' \
-            --pattern 'perfetto-mcp-rs-linux-amd64'
-
-      - name: Compute SHA256 sums
-        id: sums
-        shell: bash
-        run: |
-          cd dl
-          for f in perfetto-mcp-rs-darwin-arm64 perfetto-mcp-rs-darwin-amd64 \
-                  perfetto-mcp-rs-linux-arm64 perfetto-mcp-rs-linux-amd64; do
-            sum=$(shasum -a 256 "$f" | awk '{print $1}')
-            slug=$(echo "$f" | sed 's/perfetto-mcp-rs-//' | tr '-' '_')
-            echo "${slug}=${sum}" >> "$GITHUB_OUTPUT"
-          done
-
-      - name: Rewrite formula
-        env:
-          VERSION: ${{ steps.ver.outputs.version }}
-          DARWIN_ARM64: ${{ steps.sums.outputs.darwin_arm64 }}
-          DARWIN_AMD64: ${{ steps.sums.outputs.darwin_amd64 }}
-          LINUX_ARM64: ${{ steps.sums.outputs.linux_arm64 }}
-          LINUX_AMD64: ${{ steps.sums.outputs.linux_amd64 }}
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          import os
-          import re
-          import pathlib
-
-          formula = pathlib.Path("tap/Formula/perfetto-mcp-rs.rb")
-          src = formula.read_text()
-
-          # Bump version line.
-          src = re.sub(r'^(\s*version\s+)"[^"]*"',
-                       lambda m: f'{m.group(1)}"{os.environ["VERSION"]}"',
-                       src, count=1, flags=re.M)
-
-          # Replace each platform's sha256. The formula has the URL line
-          # immediately followed by sha256 line per platform — we anchor on
-          # the asset name in the URL.
-          replacements = {
-              "perfetto-mcp-rs-darwin-arm64": os.environ["DARWIN_ARM64"],
-              "perfetto-mcp-rs-darwin-amd64": os.environ["DARWIN_AMD64"],
-              "perfetto-mcp-rs-linux-arm64": os.environ["LINUX_ARM64"],
-              "perfetto-mcp-rs-linux-amd64": os.environ["LINUX_AMD64"],
-          }
-          for asset, sha in replacements.items():
-              pattern = (
-                  rf'(url\s+"[^"]*{re.escape(asset)}"\s*\n\s*sha256\s+)"[^"]*"'
-              )
-              src = re.sub(pattern, lambda m, s=sha: f'{m.group(1)}"{s}"', src,
-                           count=1)
-
-          formula.write_text(src)
-          PY
-
-      - name: Lint formula with brew style
-        shell: bash
-        run: brew style ./tap/Formula/perfetto-mcp-rs.rb
-
-      - name: Commit and push
-        shell: bash
-        env:
-          VERSION: ${{ steps.ver.outputs.version }}
-        run: |
-          cd tap
-          git config user.name "perfetto-mcp-rs release bot"
-          git config user.email "noreply@github.com"
-          if git diff --quiet Formula/perfetto-mcp-rs.rb; then
-            echo "::notice::Formula already at v$VERSION; nothing to push"
-            exit 0
-          fi
-          git add Formula/perfetto-mcp-rs.rb
-          git commit -m "chore: bump perfetto-mcp-rs to v$VERSION"
-          git push origin HEAD:main
-
-  publish-crate:
-    name: Publish to crates.io
-    needs: build
+  npm:
+    name: Publish to npm
+    needs: [plan, build, github-release]
+    # Run after the GitHub release, but also when it was skipped because the
+    # release already existed (re-run after an npm-only failure).
+    if: >-
+      always() &&
+      needs.plan.outputs.npm_published != 'true' &&
+      needs.build.result == 'success' &&
+      (needs.github-release.result == 'success' || needs.github-release.result == 'skipped')
     runs-on: ubuntu-latest
-    # Trusted Publishing: GitHub OIDC token → short-lived crates.io credential.
-    # Configured at https://crates.io/crates/perfetto-mcp-rs/settings under
-    # Trusted Publishers (workflow filename release.yml, no environment).
-    # No static `CARGO_REGISTRY_TOKEN` secret needed.
+    environment: npm
     permissions:
-      id-token: write   # mint the OIDC token
-      contents: read    # default token for actions/checkout on public repo
+      contents: read
+      id-token: write   # npm provenance / trusted publishing
     steps:
       - uses: actions/checkout@v6
 
-      - name: Install protoc
-        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
         with:
-          key: publish-crate
-          cache-bin: false
+          node-version: 22
+          registry-url: https://registry.npmjs.org
 
-      # Idempotency guard: tolerate re-tagging or any future "manual-publish-
-      # then-tag" bootstrap path. Hits the public crates.io API anonymously
-      # (no auth needed) and skips `cargo publish` when the version already
-      # exists rather than failing with "already exists".
-      - name: Check if version already published
-        id: check
+      - name: Use npm >= 11.5 (trusted publishing support)
+        run: npm install -g npm@latest
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Build npm packages
+        run: node npm/scripts/build-packages.mjs --artifacts dist --out npm-dist --version "${{ needs.plan.outputs.version }}"
+
+      - name: Smoke test packed packages (linux-x64)
         shell: bash
-        run: |
-          VERSION=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
-          if curl -sf "https://crates.io/api/v1/crates/perfetto-mcp-rs/$VERSION" > /dev/null; then
-            echo "::notice::v$VERSION already on crates.io — skipping publish"
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - uses: rust-lang/crates-io-auth-action@v1
-        id: auth
-        if: steps.check.outputs.skip == 'false'
-
-      - name: cargo publish
-        if: steps.check.outputs.skip == 'false'
         env:
-          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
-        run: cargo publish --locked
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: |
+          set -euo pipefail
+          NAME=$(node -p "require('./npm/perfetto-mcp/package.json').name")
+          mkdir -p tgz smoke
+          for d in npm-dist/*/; do (cd "$d" && npm pack --pack-destination "$GITHUB_WORKSPACE/tgz" >/dev/null); done
+          cd smoke
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund "../tgz/$NAME-$VERSION.tgz" "../tgz/$NAME-linux-x64-$VERSION.tgz"
+          got=$(npx --no-install "$NAME" --version)
+          echo "$got"
+          [ "$got" = "perfetto-mcp-rs $VERSION" ]
+
+      - name: Publish (platform packages first, then main)
+        shell: bash
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: |
+          set -euo pipefail
+          MAIN=$(node -p "require('./npm/perfetto-mcp/package.json').name")
+          publish() {
+            local dir=$1 name
+            name=$(node -p "require('./$dir/package.json').name")
+            if npm view "$name@$VERSION" version >/dev/null 2>&1; then
+              echo "::notice::$name@$VERSION already published; skipping"
+              return
+            fi
+            (cd "$dir" && npm publish --access public --provenance)
+          }
+          for dir in npm-dist/*/; do
+            dir=${dir%/}
+            [ "$(node -p "require('./$dir/package.json').name")" = "$MAIN" ] && continue
+            publish "$dir"
+          done
+          publish "npm-dist/${MAIN/\//__}"

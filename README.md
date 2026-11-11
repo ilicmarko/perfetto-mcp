@@ -1,15 +1,12 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/tooluse-labs/perfetto-mcp-rs/main/assets/brand/logo-wordmark.svg" width="820" alt="perfetto-mcp-rs logo">
+  <img src="https://raw.githubusercontent.com/ilicmarko/perfetto-mcp/main/assets/brand/logo-wordmark.svg" width="820" alt="perfetto-mcp-rs logo">
 </p>
 
 <p align="center">
-  <a href="https://github.com/tooluse-labs/perfetto-mcp-rs/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/tooluse-labs/perfetto-mcp-rs/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="https://github.com/tooluse-labs/perfetto-mcp-rs/releases"><img alt="Release" src="https://img.shields.io/github/v/release/tooluse-labs/perfetto-mcp-rs"></a>
-  <a href="https://github.com/tooluse-labs/perfetto-mcp-rs/blob/main/LICENSE-MIT"><img alt="License" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue"></a>
-</p>
-
-<p align="center">
-  <strong>English</strong> | <a href="https://github.com/tooluse-labs/perfetto-mcp-rs/blob/main/README.zh-CN.md">简体中文</a>
+  <a href="https://github.com/ilicmarko/perfetto-mcp/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ilicmarko/perfetto-mcp/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/ilicmarko/perfetto-mcp/releases"><img alt="Release" src="https://img.shields.io/github/v/release/ilicmarko/perfetto-mcp"></a>
+  <a href="https://www.npmjs.com/package/perfetto-mcp"><img alt="npm" src="https://img.shields.io/npm/v/perfetto-mcp"></a>
+  <a href="https://github.com/ilicmarko/perfetto-mcp/blob/main/LICENSE-MIT"><img alt="License" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue"></a>
 </p>
 
 ---
@@ -27,11 +24,9 @@
 > (MIT OR Apache-2.0, see [`LICENSE-MIT`](LICENSE-MIT) and
 > [`LICENSE-APACHE`](LICENSE-APACHE)) and copyright notices are retained.
 >
-> The install scripts, badges, and `perfetto-mcp-rs update` / `check-update` below
-> still point to the **upstream** releases. To run this fork, build from source
-> (`cargo build --release`) and register the binary with
-> `perfetto-mcp-rs install --binary-path <path>`; avoid `perfetto-mcp-rs update`,
-> which would replace it with the upstream build.
+> Releases, the npm package (`perfetto-mcp`), the install scripts, and
+> `update` / `check-update` all use **this fork's** releases. Homebrew and
+> crates.io still serve upstream builds.
 
 An [MCP](https://modelcontextprotocol.io) server that lets LLMs analyze
 [Perfetto](https://perfetto.dev) traces. Point Claude Code (or any MCP client) at
@@ -44,24 +39,91 @@ Perfetto install required.
 
 ## Quick start
 
-You drive perfetto-mcp-rs through an MCP client (Claude Code, Claude Desktop,
-Codex, Cursor, …) — install one first if you don't have it.
+You drive perfetto-mcp through an MCP client (Claude Code, Copilot CLI, VS Code,
+Cursor, Codex, …). The only requirement is [Node.js](https://nodejs.org) 18+:
+`npx` fetches a prebuilt native binary for your platform, nothing is compiled.
 
-**1. Install** — downloads the prebuilt binary and, if Claude Code and/or Codex
-are present, registers the MCP server automatically:
+**1. Add the server to your client.** Every client runs the same command:
+`npx -y perfetto-mcp@latest`.
+
+<details open>
+<summary><b>Claude Code</b></summary>
 
 ```sh
-# Linux / macOS / Windows (Git Bash, MSYS2, Cygwin)
-curl -fsSL https://raw.githubusercontent.com/tooluse-labs/perfetto-mcp-rs/main/install.sh | sh
-```
-```powershell
-# Windows (PowerShell)
-irm https://raw.githubusercontent.com/tooluse-labs/perfetto-mcp-rs/main/install.ps1 | iex
+claude mcp add perfetto --scope user -- npx -y perfetto-mcp@latest
 ```
 
-Restart Claude Code (or start a new Codex session) to pick it up. Homebrew,
-Cargo, project scope, direct-binary download, and manual registration are under
-[Install options](#install-options).
+</details>
+
+<details>
+<summary><b>GitHub Copilot CLI</b></summary>
+
+```sh
+copilot mcp add perfetto -- npx -y perfetto-mcp@latest
+```
+
+</details>
+
+<details>
+<summary><b>VS Code (Copilot Chat)</b></summary>
+
+```sh
+code --add-mcp '{"name":"perfetto","command":"npx","args":["-y","perfetto-mcp@latest"]}'
+```
+
+Or add it to `.vscode/mcp.json` for a single workspace:
+
+```json
+{
+  "servers": {
+    "perfetto": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "perfetto-mcp@latest"]
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><b>Codex</b></summary>
+
+```sh
+codex mcp add perfetto -- npx -y perfetto-mcp@latest
+```
+
+</details>
+
+<details>
+<summary><b>Cursor, Claude Desktop, Windsurf, Qoder, other JSON-configured clients</b></summary>
+
+```json
+{
+  "mcpServers": {
+    "perfetto": {
+      "command": "npx",
+      "args": ["-y", "perfetto-mcp@latest"]
+    }
+  }
+}
+```
+
+Cursor: `~/.cursor/mcp.json`. Claude Desktop: Settings → Developer → Edit Config.
+
+</details>
+
+<details>
+<summary><b>Windows note</b></summary>
+
+Some clients can't spawn `npx` directly on Windows. If the server fails to
+start, use `"command": "cmd"` with `"args": ["/c", "npx", "-y", "perfetto-mcp@latest"]`.
+
+</details>
+
+Restart the client (or start a new session) to pick it up. Prefer a standalone
+binary without Node.js? See [Install options](#install-options).
 
 **2. Ask in plain language:**
 
@@ -203,19 +265,30 @@ Server settings are read at startup; when both a CLI flag and environment variab
 <details>
 <summary>Package managers, Claude scope, direct binary, manual registration</summary>
 
-**Package managers** — if you'd rather not run the install script:
+**Install script (no Node.js)** — downloads the prebuilt binary and, if Claude
+Code and/or Codex are present, registers the MCP server automatically:
 
 ```sh
-# macOS / Linux via Homebrew
-brew tap tooluse-labs/tap
-brew install perfetto-mcp-rs
-# brew prints caveats; run the printed line to register with Claude Code / Codex:
-perfetto-mcp-rs install --binary-path "$(brew --prefix)/bin/perfetto-mcp-rs"
-
-# Rust developers via cargo
-cargo install --locked perfetto-mcp-rs
-perfetto-mcp-rs install --binary-path "$(which perfetto-mcp-rs)"
+# Linux / macOS / Windows (Git Bash, MSYS2, Cygwin)
+curl -fsSL https://raw.githubusercontent.com/ilicmarko/perfetto-mcp/main/install.sh | sh
 ```
+```powershell
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/ilicmarko/perfetto-mcp/main/install.ps1 | iex
+```
+
+**Global npm install** — puts `perfetto-mcp` on your `PATH` instead of going
+through `npx` on every start:
+
+```sh
+npm install -g perfetto-mcp
+claude mcp add perfetto --scope user -- perfetto-mcp
+```
+
+**Upstream builds** — Homebrew (`brew install tooluse-labs/tap/perfetto-mcp-rs`)
+and crates.io (`cargo install perfetto-mcp-rs`) install the **upstream**
+[`tooluse-labs/perfetto-mcp-rs`](https://github.com/tooluse-labs/perfetto-mcp-rs)
+release, not this fork.
 
 If Qoder is detected during a script install, the installer prints a paste-ready
 JSON snippet (Qoder has no programmatic MCP-registration API yet — open Qoder
@@ -226,7 +299,7 @@ directory). For a project-local install, set `SCOPE=local` (or `project`) and ru
 the script from that project's directory:
 
 ```sh
-SCOPE=local bash -c 'curl -fsSL https://raw.githubusercontent.com/tooluse-labs/perfetto-mcp-rs/main/install.sh | sh'
+SCOPE=local bash -c 'curl -fsSL https://raw.githubusercontent.com/ilicmarko/perfetto-mcp/main/install.sh | sh'
 ```
 
 PowerShell equivalent: `$env:SCOPE = 'local'; irm ... | iex`. Codex has no scope
@@ -234,7 +307,7 @@ concept and ignores this variable.
 
 **Direct binary** — supported platforms: linux amd64/arm64, macOS amd64/arm64,
 Windows amd64. Grab the binary from the
-[releases page](https://github.com/tooluse-labs/perfetto-mcp-rs/releases). Release
+[releases page](https://github.com/ilicmarko/perfetto-mcp/releases). Release
 assets are named `perfetto-mcp-rs-<platform>` (e.g. `perfetto-mcp-rs-linux-amd64`);
 rename or address the downloaded file explicitly when invoking `install`, and on
 Unix mark it executable first (`chmod +x`) — the subcommand refuses
@@ -243,7 +316,7 @@ non-executable paths to avoid writing a broken MCP entry. Example:
 ```sh
 # Linux amd64 example — adjust the asset name for your platform.
 curl -fsSL -o perfetto-mcp-rs \
-  https://github.com/tooluse-labs/perfetto-mcp-rs/releases/latest/download/perfetto-mcp-rs-linux-amd64
+  https://github.com/ilicmarko/perfetto-mcp/releases/latest/download/perfetto-mcp-rs-linux-amd64
 chmod +x perfetto-mcp-rs
 ./perfetto-mcp-rs install --scope user --binary-path "$PWD/perfetto-mcp-rs"
 ```
@@ -276,7 +349,13 @@ JSON-based clients (e.g. Claude Code, Claude Desktop, Cursor):
 <details>
 <summary>Upgrade, pin a version, check for updates, uninstall</summary>
 
-**Upgrade** — run the update subcommand:
+**npx / npm installs** — `npx -y perfetto-mcp@latest` resolves the newest
+release each time the client starts the server, so there is nothing to upgrade.
+For a global npm install, run `npm install -g perfetto-mcp@latest`. Pin a version
+with `npx -y perfetto-mcp@0.18.0`. The `update` subcommand refuses to run under
+npm, because it would install a second, script-managed copy.
+
+**Script installs** — run the update subcommand:
 
 ```sh
 perfetto-mcp-rs update
@@ -307,14 +386,14 @@ The `VERSION` env var also works, but **must come immediately before `sh`**
 ... | sh` puts `VERSION` on `curl`, not on the piped `sh`):
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/tooluse-labs/perfetto-mcp-rs/main/install.sh | VERSION=v0.7.0 sh
+curl -fsSL https://raw.githubusercontent.com/ilicmarko/perfetto-mcp/main/install.sh | VERSION=v0.7.0 sh
 ```
 
 PowerShell — set `$env:VERSION` in the same line, since `iex` runs in the current
 session:
 
 ```powershell
-$env:VERSION = 'v0.7.0'; irm https://raw.githubusercontent.com/tooluse-labs/perfetto-mcp-rs/main/install.ps1 | iex
+$env:VERSION = 'v0.7.0'; irm https://raw.githubusercontent.com/ilicmarko/perfetto-mcp/main/install.ps1 | iex
 ```
 
 **Check for updates:**
@@ -333,11 +412,11 @@ Idempotent — safe to run if any step was already done by hand.
 
 ```sh
 # Linux / macOS / Windows (Git Bash, MSYS2, Cygwin)
-curl -fsSL https://raw.githubusercontent.com/tooluse-labs/perfetto-mcp-rs/main/uninstall.sh | sh
+curl -fsSL https://raw.githubusercontent.com/ilicmarko/perfetto-mcp/main/uninstall.sh | sh
 ```
 ```powershell
 # Windows (PowerShell) — close Claude Code, Codex, or anything else using the .exe first
-irm https://raw.githubusercontent.com/tooluse-labs/perfetto-mcp-rs/main/uninstall.ps1 | iex
+irm https://raw.githubusercontent.com/ilicmarko/perfetto-mcp/main/uninstall.ps1 | iex
 ```
 
 **Scoped installs (local / project)** — `claude` stores local/project entries
@@ -348,7 +427,7 @@ wrapper still removes the binary and cache:
 ```sh
 # Ran `SCOPE=local bash install.sh` in ~/work/foo earlier? Then:
 cd ~/work/foo
-SCOPE=local bash -c 'curl -fsSL https://raw.githubusercontent.com/tooluse-labs/perfetto-mcp-rs/main/uninstall.sh | sh'
+SCOPE=local bash -c 'curl -fsSL https://raw.githubusercontent.com/ilicmarko/perfetto-mcp/main/uninstall.sh | sh'
 ```
 
 PowerShell equivalent: `cd <original-project-dir>; $env:SCOPE = 'local'; irm ... | iex`.
@@ -385,8 +464,8 @@ choco install protoc
 Then:
 
 ```sh
-git clone https://github.com/tooluse-labs/perfetto-mcp-rs
-cd perfetto-mcp-rs
+git clone https://github.com/ilicmarko/perfetto-mcp
+cd perfetto-mcp
 cargo build --release
 # Binary at target/release/perfetto-mcp-rs
 ```
@@ -401,8 +480,52 @@ cargo fmt           # format
 
 </details>
 
+## Releasing
+
+<details>
+<summary>How a merge to <code>main</code> becomes a release</summary>
+
+`Cargo.toml` is the version source of truth. To ship a release:
+
+1. In your PR, bump `version` in `Cargo.toml` (and run `cargo build` so
+   `Cargo.lock` follows) and add a `### [X.Y.Z]` section to `CHANGELOG.md`.
+2. Merge to `main`.
+
+[`release.yml`](.github/workflows/release.yml) then notices that `vX.Y.Z` hasn't
+been released yet and:
+
+- re-runs the full CI suite (fmt, clippy, tests on Linux/macOS/Windows),
+- builds static binaries for linux x64/arm64 (musl), macOS x64/arm64 and
+  Windows x64,
+- creates the `vX.Y.Z` tag and GitHub release, with the CHANGELOG section as
+  notes plus a `SHA256SUMS` file,
+- publishes the npm packages: `perfetto-mcp-<os>-<cpu>` (one per platform, each
+  with its binary) and then `perfetto-mcp` (the launcher, which picks the right
+  one through `optionalDependencies`), with npm provenance.
+
+Pushes that don't change the version are no-ops. Each step skips work that's
+already done, so re-running the workflow (or triggering it manually) after a
+partial failure only finishes what's missing.
+
+**One-time setup:** create an npm automation token and save it as the
+`NPM_TOKEN` repository secret. Once the packages exist, you can switch to npm
+[trusted publishing](https://docs.npmjs.com/trusted-publishers) for each of the
+six packages (workflow `release.yml`, environment `npm`) and delete the token.
+
+To check the npm packaging locally:
+
+```sh
+cargo build --release
+mkdir -p /tmp/art && cp target/release/perfetto-mcp-rs /tmp/art/perfetto-mcp-rs-darwin-arm64
+# build-packages.mjs requires every platform asset; placeholders are fine locally
+for a in darwin-amd64 linux-arm64 linux-amd64 windows-amd64.exe; do echo x > /tmp/art/perfetto-mcp-rs-$a; done
+node npm/scripts/build-packages.mjs --artifacts /tmp/art --out npm-dist
+```
+
+</details>
+
 ## License
 
-Dual-licensed under either of [Apache License, Version 2.0](https://github.com/tooluse-labs/perfetto-mcp-rs/blob/main/LICENSE-APACHE) or
-[MIT license](https://github.com/tooluse-labs/perfetto-mcp-rs/blob/main/LICENSE-MIT) at your option. Contributions are accepted under
+Dual-licensed under either of [Apache License, Version 2.0](https://github.com/ilicmarko/perfetto-mcp/blob/main/LICENSE-APACHE) or
+[MIT license](https://github.com/ilicmarko/perfetto-mcp/blob/main/LICENSE-MIT) at your option. Contributions are accepted under
 the same terms.

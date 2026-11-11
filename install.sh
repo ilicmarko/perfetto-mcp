@@ -2,7 +2,7 @@
 # Install perfetto-mcp-rs and register it with Claude Code / Codex.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/tooluse-labs/perfetto-mcp-rs/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/ilicmarko/perfetto-mcp/main/install.sh | sh
 #
 # Pin a specific version (recommended over the env-var form — it survives
 # the `VAR=value curl … | sh` shell-pipe pitfall, which only sets VAR for
@@ -12,7 +12,7 @@
 #
 # Environment overrides (read if no equivalent flag is passed; flag wins):
 #   INSTALL_DIR   Where to place the binary (default: $HOME/.local/bin)
-#   REPO          GitHub slug to download from (default: tooluse-labs/perfetto-mcp-rs)
+#   REPO          GitHub slug to download from (default: ilicmarko/perfetto-mcp)
 #   VERSION       Release tag to install (default: latest)
 #   SCOPE         Claude scope: user|local|project (default: user). For
 #                 local/project, run this script from the target project dir.
@@ -47,7 +47,7 @@ USAGE
   esac
 done
 
-: "${REPO:=tooluse-labs/perfetto-mcp-rs}"
+: "${REPO:=ilicmarko/perfetto-mcp}"
 : "${INSTALL_DIR:=${HOME}/.local/bin}"
 : "${VERSION:=latest}"
 # Claude scope to register under: user | local | project. Codex ignores scope

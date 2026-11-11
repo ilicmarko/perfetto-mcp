@@ -121,5 +121,8 @@ parallel test runs.
 
 `Cargo.toml` is the version source of truth. Release commits follow the format
 `release(v0.13.4): <one-line summary>` (see recent git log). `CHANGELOG.md` is hand-maintained.
+Merging a version bump to `main` releases automatically: `.github/workflows/release.yml` tags
+`v<version>`, publishes the GitHub release and the npm packages (`npm/`, built by
+`npm/scripts/build-packages.mjs`). It fails if `CHANGELOG.md` has no `### [<version>]` section.
 `docs/roadmap.md` tracks milestone status as a snapshot of intent — individual tasks live in
 GitHub issues, not roadmap checkboxes.

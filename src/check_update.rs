@@ -18,7 +18,7 @@ use semver::Version;
 use serde::Deserialize;
 
 const RELEASES_LATEST_URL: &str =
-    "https://api.github.com/repos/tooluse-labs/perfetto-mcp-rs/releases/latest";
+    "https://api.github.com/repos/ilicmarko/perfetto-mcp/releases/latest";
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// The `tag_name` and `published_at` fields from the GitHub /releases/latest

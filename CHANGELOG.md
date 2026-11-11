@@ -9,6 +9,16 @@
   exited (`expect initialized request, but received: ... server/discover`).
   Upgraded `rmcp` to 3.x, which answers the probe and then completes the
   classic handshake.
+- **Install with `npx -y perfetto-mcp@latest`.** New `perfetto-mcp` npm package:
+  a small Node launcher plus one package per platform carrying the prebuilt
+  binary (linux x64/arm64, macOS x64/arm64, Windows x64), selected through
+  `optionalDependencies`. `update` refuses to run when launched via npm.
+- **Automatic releases.** Merging a `Cargo.toml` version bump to `main` runs CI,
+  builds all targets, creates the GitHub release (with `SHA256SUMS`), and
+  publishes to npm with provenance. The upstream Homebrew-tap and crates.io
+  jobs are removed.
+- `check-update`, `update`, and the install scripts now use this fork's releases
+  (`ilicmarko/perfetto-mcp`).
 
 ### [0.17.1](https://github.com/tooluse-labs/perfetto-mcp-rs/releases/tag/v0.17.1) (July 10, 2026)
 

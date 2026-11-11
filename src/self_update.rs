@@ -20,11 +20,13 @@ use crate::check_update;
 use crate::install::ClaudeScope;
 
 const INSTALL_SH_URL: &str =
-    "https://raw.githubusercontent.com/tooluse-labs/perfetto-mcp-rs/main/install.sh";
+    "https://raw.githubusercontent.com/ilicmarko/perfetto-mcp/main/install.sh";
 const INSTALL_PS1_URL: &str =
-    "https://raw.githubusercontent.com/tooluse-labs/perfetto-mcp-rs/main/install.ps1";
+    "https://raw.githubusercontent.com/ilicmarko/perfetto-mcp/main/install.ps1";
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 const POWERSHELL_STDIN_COMMAND: &str = "-";
+/// Set by the npm launcher (`npm/perfetto-mcp/bin/perfetto-mcp.js`).
+const NPM_LAUNCHER_ENV: &str = "PERFETTO_MCP_NPM_LAUNCHER";
 
 #[derive(clap::Args, Clone, Debug, PartialEq, Eq)]
 pub struct UpdateArgs {
@@ -40,6 +42,14 @@ pub struct UpdateArgs {
 }
 
 pub async fn run(args: UpdateArgs) -> ExitCode {
+    if std::env::var_os(NPM_LAUNCHER_ENV).is_some() {
+        eprintln!(
+            "update: this copy was launched through npm. npm installs are updated by npm: \
+             use `npx -y perfetto-mcp@latest` in your MCP config (or `npm install -g \
+             perfetto-mcp@latest` for a global install)."
+        );
+        return ExitCode::from(1);
+    }
     match run_inner(args).await {
         Ok(UpdateOutcome::NoUpdate { current, latest }) if current == latest => {
             println!("perfetto-mcp-rs is already on the latest release (v{current}).");
