@@ -11,6 +11,7 @@ use sha2::{Digest, Sha256};
 use tempfile::NamedTempFile;
 
 const TP_VERSION: &str = "v54.0";
+const LEGACY_CACHE_DIR_NAME: &str = "perfetto-mcp-rs";
 
 pub const DEFAULT_ARTIFACTS_BASE_URL: &str =
     "https://commondatastorage.googleapis.com/perfetto-luci-artifacts";
@@ -146,6 +147,14 @@ pub async fn ensure_binary(config: &DownloadConfig) -> Result<PathBuf> {
         }
     }
 
+    if let Ok(legacy_dir) = legacy_cache_dir() {
+        match adopt_legacy_cache(&legacy_dir.join(BINARY_NAME), &binary_path).await {
+            Ok(true) => return Ok(binary_path),
+            Ok(false) => {}
+            Err(e) => tracing::warn!("could not reuse legacy trace_processor_shell cache: {e}"),
+        }
+    }
+
     tokio::time::timeout(
         DOWNLOAD_TOTAL_TIMEOUT,
         download_binary(config, &binary_path),
@@ -169,6 +178,75 @@ pub(crate) fn cache_root() -> Result<PathBuf> {
 
 fn cache_dir() -> Result<PathBuf> {
     Ok(cache_root()?.join(TP_VERSION))
+}
+
+/// Versioned cache dir used before the binary was renamed (and still used by
+/// upstream `perfetto-mcp-rs`). Only ever read, so offline hosts that already
+/// hold the pinned binary there don't need the network after upgrading.
+fn legacy_cache_dir() -> Result<PathBuf> {
+    let base = dirs::data_local_dir().context("cannot determine local data directory")?;
+    Ok(base.join(LEGACY_CACHE_DIR_NAME).join(TP_VERSION))
+}
+
+/// Copies `legacy` to `dest` when its sidecar verifies. The legacy file is
+/// copied rather than moved because another install may still use it.
+/// Returns `Ok(false)` when there is no verified legacy binary to reuse.
+async fn adopt_legacy_cache(legacy: &Path, dest: &Path) -> Result<bool> {
+    let lp = legacy.to_path_buf();
+    let verified = tokio::task::spawn_blocking(move || {
+        lp.exists() && verify_sidecar(&lp) == VerifyOutcome::Verified
+    })
+    .await
+    .context("legacy cache verify task panicked")?;
+    if !verified {
+        return Ok(false);
+    }
+
+    let parent = dest
+        .parent()
+        .context("cache dir missing from binary path")?
+        .to_path_buf();
+    tokio::fs::create_dir_all(&parent).await?;
+    let src = legacy.to_path_buf();
+    let (tmp, digest) = tokio::task::spawn_blocking(move || -> Result<(NamedTempFile, String)> {
+        let mut tmp = NamedTempFile::new_in(&parent)?;
+        let mut file = std::fs::File::open(&src)?;
+        let mut hasher = Sha256::new();
+        let mut buf = vec![0u8; 64 * 1024];
+        loop {
+            let n = std::io::Read::read(&mut file, &mut buf)?;
+            if n == 0 {
+                break;
+            }
+            hasher.update(&buf[..n]);
+            tmp.as_file_mut().write_all(&buf[..n])?;
+        }
+        tmp.as_file().sync_all()?;
+        Ok((tmp, hex::encode(hasher.finalize())))
+    })
+    .await
+    .context("legacy cache copy task panicked")??;
+
+    // Re-check the copied bytes so a file swapped after verification can't slip in.
+    let expected = std::fs::read_to_string(sidecar_path(legacy))?
+        .trim()
+        .to_ascii_lowercase();
+    if digest != expected {
+        bail!("legacy trace_processor_shell changed while copying");
+    }
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(tmp.path(), std::fs::Permissions::from_mode(0o755))?;
+    }
+    persist_with_retry(tmp, dest).await?;
+    write_sidecar_atomically(dest, &digest)?;
+    tracing::info!(
+        "reused trace_processor_shell from legacy cache {}",
+        legacy.display()
+    );
+    Ok(true)
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -492,6 +570,48 @@ mod tests {
             path_str.contains(TP_VERSION),
             "cache path should contain version: {path_str}",
         );
+    }
+
+    fn write_cached_binary(dir: &Path, contents: &[u8], sidecar: Option<&str>) -> PathBuf {
+        std::fs::create_dir_all(dir).unwrap();
+        let bin = dir.join(BINARY_NAME);
+        std::fs::write(&bin, contents).unwrap();
+        if let Some(s) = sidecar {
+            std::fs::write(sidecar_path(&bin), s).unwrap();
+        }
+        bin
+    }
+
+    #[tokio::test]
+    async fn adopt_legacy_cache_copies_verified_binary_and_keeps_source() {
+        let temp = tempfile::tempdir().unwrap();
+        let contents = b"fake trace processor";
+        let digest = hex::encode(Sha256::digest(contents));
+        let legacy = write_cached_binary(&temp.path().join("old"), contents, Some(&digest));
+        let dest = temp.path().join("new").join(BINARY_NAME);
+
+        assert!(adopt_legacy_cache(&legacy, &dest).await.unwrap());
+
+        assert_eq!(std::fs::read(&dest).unwrap(), contents);
+        assert_eq!(verify_sidecar(&dest), VerifyOutcome::Verified);
+        assert!(legacy.exists(), "legacy cache must not be moved");
+    }
+
+    #[tokio::test]
+    async fn adopt_legacy_cache_skips_unverified_binary() {
+        let temp = tempfile::tempdir().unwrap();
+        let dest = temp.path().join("new").join(BINARY_NAME);
+
+        let missing = temp.path().join("missing").join(BINARY_NAME);
+        assert!(!adopt_legacy_cache(&missing, &dest).await.unwrap());
+
+        let no_sidecar = write_cached_binary(&temp.path().join("a"), b"x", None);
+        assert!(!adopt_legacy_cache(&no_sidecar, &dest).await.unwrap());
+
+        let mismatch = write_cached_binary(&temp.path().join("b"), b"x", Some(&"0".repeat(64)));
+        assert!(!adopt_legacy_cache(&mismatch, &dest).await.unwrap());
+
+        assert!(!dest.exists());
     }
 
     #[test]

@@ -99,6 +99,9 @@ jobs:
   build:
     name: ${{ matrix.asset_name }}
     needs: [plan, ci]
+    # Once the GitHub release exists its assets are the source of truth;
+    # retries reuse them instead of rebuilding from a newer commit.
+    if: needs.plan.outputs.release_exists != 'true'
     strategy:
       fail-fast: true
       matrix:
@@ -224,14 +227,13 @@ jobs:
 
   npm:
     name: Publish to npm
-    needs: [plan, build, github-release]
-    # Run after the GitHub release, but also when it was skipped because the
-    # release already existed (re-run after an npm-only failure).
+    needs: [plan, github-release]
+    # Publishes from the release assets, so a re-run after a partial failure
+    # ships exactly the binaries attached to the GitHub release.
     if: >-
       always() &&
       needs.plan.outputs.npm_published != 'true' &&
-      needs.build.result == 'success' &&
-      (needs.github-release.result == 'success' || needs.github-release.result == 'skipped')
+      (needs.github-release.result == 'success' || needs.plan.outputs.release_exists == 'true')
     runs-on: ubuntu-latest
     environment: npm
     permissions:
@@ -239,6 +241,18 @@ jobs:
       id-token: write   # npm provenance / trusted publishing
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.plan.outputs.tag }}
+
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.plan.outputs.tag }}
+        shell: bash
+        run: |
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir dist \
+            --pattern 'perfetto-mcp-*' --pattern SHA256SUMS
+          (cd dist && if command -v sha256sum >/dev/null; then sha256sum -c SHA256SUMS; else shasum -a 256 -c SHA256SUMS; fi)
 
       - uses: actions/setup-node@v4
         with:
@@ -247,11 +261,6 @@ jobs:
 
       - name: Use npm >= 11.5 (trusted publishing support)
         run: npm install -g npm@latest
-
-      - uses: actions/download-artifact@v4
-        with:
-          path: dist
-          merge-multiple: true
 
       - name: Build npm packages
         run: node npm/scripts/build-packages.mjs --artifacts dist --out npm-dist --version "${{ needs.plan.outputs.version }}"
@@ -298,11 +307,16 @@ jobs:
 
   crates:
     name: Publish to crates.io
-    needs: [plan, build]
-    if: always() && needs.build.result == 'success' && needs.plan.outputs.crate_pending == 'true'
+    needs: [plan, github-release]
+    if: >-
+      always() &&
+      needs.plan.outputs.crate_pending == 'true' &&
+      (needs.github-release.result == 'success' || needs.plan.outputs.release_exists == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.plan.outputs.tag }}
 
       - name: Install protoc
         run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
@@ -321,16 +335,27 @@ jobs:
 
   homebrew:
     name: Update Homebrew tap
-    needs: [plan, build, github-release]
-    # Formula URLs point at the GitHub release, so it must exist first.
+    needs: [plan, github-release]
+    # Formula URLs and checksums come from the GitHub release assets.
     if: >-
       always() &&
       needs.plan.outputs.brew_pending == 'true' &&
-      needs.build.result == 'success' &&
-      (needs.github-release.result == 'success' || needs.github-release.result == 'skipped')
+      (needs.github-release.result == 'success' || needs.plan.outputs.release_exists == 'true')
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.plan.outputs.tag }}
+
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.plan.outputs.tag }}
+        shell: bash
+        run: |
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir dist \
+            --pattern 'perfetto-mcp-*' --pattern SHA256SUMS
+          (cd dist && if command -v sha256sum >/dev/null; then sha256sum -c SHA256SUMS; else shasum -a 256 -c SHA256SUMS; fi)
 
       - uses: actions/checkout@v6
         with:
@@ -338,16 +363,10 @@ jobs:
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           path: tap
 
-      - uses: actions/download-artifact@v4
-        with:
-          path: dist
-          merge-multiple: true
-
       - name: Render formula
         env:
           VERSION: ${{ needs.plan.outputs.version }}
         run: |
-          (cd dist && shasum -a 256 perfetto-mcp-* > SHA256SUMS)
           mkdir -p tap/Formula
           node .github/scripts/render-homebrew-formula.mjs \
             --version "$VERSION" --sums dist/SHA256SUMS --repo "$GITHUB_REPOSITORY" \

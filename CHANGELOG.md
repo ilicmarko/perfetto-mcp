@@ -2,7 +2,7 @@
 
 ## perfetto-mcp-rs 0.x Changes
 
-### Unreleased
+### [0.18.0](https://github.com/ilicmarko/perfetto-mcp/releases/tag/v0.18.0) (November 15, 2026)
 
 - **Copilot CLI can now connect.** Copilot CLI probes with `server/discover`
   before `initialize`; rmcp 0.16 treated any pre-initialize request as fatal and
@@ -19,7 +19,9 @@
   and the `ilicmarko/tap` Homebrew tap (`brew install ilicmarko/tap/perfetto-mcp`).
 - **Renamed the binary to `perfetto-mcp`** (crate, release assets, npm `bin`,
   Docker image, and the `trace_processor_shell` cache dir too) so the fork can be
-  installed next to upstream's `perfetto-mcp-rs` without clashing. The MCP
+  installed next to upstream's `perfetto-mcp-rs` without clashing. A verified
+  `trace_processor_shell` already in the old `perfetto-mcp-rs` cache is copied
+  over instead of re-downloaded. The MCP
   registration name used by `install` is still `perfetto-rs`.
 - `check-update`, `update`, and the install scripts now use this fork's releases
   (`ilicmarko/perfetto-mcp`).
