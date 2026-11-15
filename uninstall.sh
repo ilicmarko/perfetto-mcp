@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Uninstall perfetto-mcp-rs and deregister it from Claude Code / Codex.
+# Uninstall perfetto-mcp and deregister it from Claude Code / Codex.
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/ilicmarko/perfetto-mcp/main/uninstall.sh | sh
@@ -35,7 +35,7 @@ INSTALL_DIR_OVERRIDDEN="${INSTALL_DIR:+yes}"
 : "${INSTALL_DIR:=${HOME}/.local/bin}"
 : "${SCOPE:=user}"
 
-BIN_NAME="perfetto-mcp-rs"
+BIN_NAME="perfetto-mcp"
 
 info() { printf '==> %s\n' "$1"; }
 warn() { printf 'warning: %s\n' "$1" >&2; }
@@ -127,10 +127,10 @@ main() {
     warn "If you also had a --scope local/project registration, from that project dir run:"
     warn "  claude mcp remove perfetto-rs --scope local    # or --scope project"
     warn "Cache not auto-cleaned (binary missing). Remove manually:"
-    warn "  Linux:   rm -rf \"\${XDG_DATA_HOME:-\$HOME/.local/share}/perfetto-mcp-rs\""
-    warn "  macOS:   rm -rf \"\$HOME/Library/Application Support/perfetto-mcp-rs\""
-    warn "  Windows (Git Bash): rm -rf \"\$(cygpath -u \"\$LOCALAPPDATA\")/perfetto-mcp-rs\""
-    warn "  Windows (PowerShell): Remove-Item -Recurse -Force \"\$env:LOCALAPPDATA\\perfetto-mcp-rs\""
+    warn "  Linux:   rm -rf \"\${XDG_DATA_HOME:-\$HOME/.local/share}/perfetto-mcp\""
+    warn "  macOS:   rm -rf \"\$HOME/Library/Application Support/perfetto-mcp\""
+    warn "  Windows (Git Bash): rm -rf \"\$(cygpath -u \"\$LOCALAPPDATA\")/perfetto-mcp\""
+    warn "  Windows (PowerShell): Remove-Item -Recurse -Force \"\$env:LOCALAPPDATA\\perfetto-mcp\""
     removable=yes  # nothing to remove
   fi
 

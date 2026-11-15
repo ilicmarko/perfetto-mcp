@@ -1,7 +1,7 @@
 // Copyright 2025 The perfetto-mcp-rs Authors
 // SPDX-License-Identifier: Apache-2.0
 
-//! Hermetic integration tests for `perfetto-mcp-rs install` / `uninstall`.
+//! Hermetic integration tests for `perfetto-mcp install` / `uninstall`.
 //!
 //! The tests swap `claude` and `codex` for shell fixtures under
 //! `tests/fixtures/`. `PATH` is set to **only** the fixtures dir so
@@ -22,7 +22,7 @@ use std::process::{Command, Output};
 
 use tempfile::TempDir;
 
-const BIN: &str = env!("CARGO_BIN_EXE_perfetto-mcp-rs");
+const BIN: &str = env!("CARGO_BIN_EXE_perfetto-mcp");
 
 /// Absolute path to `tests/fixtures/` — stable across CWD / parallel tests.
 fn fixtures_dir() -> PathBuf {
@@ -96,14 +96,13 @@ impl Harness {
             .collect()
     }
 
-    /// Cache root as the binary will compute it: `$XDG_DATA_HOME/perfetto-mcp-rs`
-    /// on Linux, `$HOME/Library/Application Support/perfetto-mcp-rs` on macOS.
+    /// Cache root as the binary will compute it: `$XDG_DATA_HOME/perfetto-mcp`
+    /// on Linux, `$HOME/Library/Application Support/perfetto-mcp` on macOS.
     fn expected_cache_root(&self) -> PathBuf {
         if cfg!(target_os = "macos") {
-            self.home
-                .join("Library/Application Support/perfetto-mcp-rs")
+            self.home.join("Library/Application Support/perfetto-mcp")
         } else {
-            self.xdg_data.join("perfetto-mcp-rs")
+            self.xdg_data.join("perfetto-mcp")
         }
     }
 
@@ -119,9 +118,9 @@ impl Harness {
     /// `--binary-path` must point at something real. The `.to_string()`
     /// form is what the call-log fixture records, so assertions using
     /// this path need to interpolate it instead of hard-coding
-    /// `/fake/bin/perfetto-mcp-rs`.
+    /// `/fake/bin/perfetto-mcp`.
     fn fake_binary_path(&self) -> String {
-        let p = self.state_dir.join("fake-perfetto-mcp-rs");
+        let p = self.state_dir.join("fake-perfetto-mcp");
         if !p.exists() {
             fs::write(&p, b"#!/bin/false\n").unwrap();
             // Mark executable — run_install refuses 0644 binaries (a real
@@ -954,7 +953,7 @@ fn uninstall_survives_malformed_server_env_vars() {
 
 // ---------------------------------------------------------------------------
 // P2 regression (Codex latest): install must NOT register a relative path —
-// MCP clients spawn the server from their own CWD, so `./perfetto-mcp-rs`
+// MCP clients spawn the server from their own CWD, so `./perfetto-mcp`
 // resolves to the wrong place (or nothing) later. The binary absolutizes the
 // path before calling `mcp add`.
 // ---------------------------------------------------------------------------
@@ -966,7 +965,7 @@ fn install_registers_absolute_path_from_relative_input() {
     // registered path becomes `<tempdir>/name` (regardless of the test
     // runner's CWD).
     let work = tempfile::tempdir().unwrap();
-    let rel_name = "relative-fake-perfetto-mcp-rs";
+    let rel_name = "relative-fake-perfetto-mcp";
     let rel_path = work.path().join(rel_name);
     fs::write(&rel_path, b"#!/bin/false\n").unwrap();
     use std::os::unix::fs::PermissionsExt;
@@ -1061,7 +1060,7 @@ fn install_rejects_nonexistent_binary_path() {
         "--scope",
         "user",
         "--binary-path",
-        "/definitely/does/not/exist/perfetto-mcp-rs",
+        "/definitely/does/not/exist/perfetto-mcp",
     ]);
     assert_failure(
         &out,
@@ -1091,7 +1090,7 @@ fn install_rejects_nonexistent_binary_path() {
 #[test]
 fn install_rejects_non_executable_binary_path() {
     let h = Harness::new();
-    let p = h.state_dir.join("non-exec-fake-perfetto-mcp-rs");
+    let p = h.state_dir.join("non-exec-fake-perfetto-mcp");
     fs::write(&p, b"#!/bin/false\n").unwrap();
     // Leave mode at default (post-umask 0644) — the bit we want to assert on.
     use std::os::unix::fs::PermissionsExt;

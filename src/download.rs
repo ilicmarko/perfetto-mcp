@@ -81,7 +81,7 @@ impl Default for DownloadConfig {
 /// Lookup order:
 /// 1. `PERFETTO_TP_PATH` environment variable
 /// 2. `trace_processor_shell` on `PATH`
-/// 3. Cached download at `{data_local_dir}/perfetto-mcp-rs/<version>/trace_processor_shell`
+/// 3. Cached download at `{data_local_dir}/perfetto-mcp/<version>/trace_processor_shell`
 /// 4. Download from the configured base URL (default: Perfetto LUCI artifacts)
 pub async fn ensure_binary(config: &DownloadConfig) -> Result<PathBuf> {
     if let Ok(path) = std::env::var("PERFETTO_TP_PATH") {
@@ -159,12 +159,12 @@ pub async fn ensure_binary(config: &DownloadConfig) -> Result<PathBuf> {
     Ok(binary_path)
 }
 
-/// Unversioned cache root `<data-local>/perfetto-mcp-rs`. Install/uninstall
+/// Unversioned cache root `<data-local>/perfetto-mcp`. Install/uninstall
 /// subcommands clean this root so all historical `TP_VERSION` subdirs are
 /// swept regardless of which binary runs the cleanup.
 pub(crate) fn cache_root() -> Result<PathBuf> {
     let base = dirs::data_local_dir().context("cannot determine local data directory")?;
-    Ok(base.join("perfetto-mcp-rs"))
+    Ok(base.join("perfetto-mcp"))
 }
 
 fn cache_dir() -> Result<PathBuf> {

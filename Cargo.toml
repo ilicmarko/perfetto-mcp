@@ -1,5 +1,5 @@
 [package]
-name = "perfetto-mcp-rs"
+name = "perfetto-mcp"
 version = "0.17.1"
 edition = "2021"
 description = "MCP server for Perfetto trace analysis"
@@ -10,6 +10,7 @@ homepage = "https://github.com/ilicmarko/perfetto-mcp"
 readme = "README.md"
 keywords = ["perfetto", "mcp", "trace", "tracing", "claude"]
 categories = ["development-tools::profiling", "command-line-utilities"]
+exclude = [".github/", "npm/", "assets/", "docs/"]
 
 [dependencies]
 rmcp = { version = "3", features = ["server", "transport-io", "macros"] }

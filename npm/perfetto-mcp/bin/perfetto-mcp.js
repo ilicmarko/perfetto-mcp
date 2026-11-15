@@ -2,7 +2,7 @@
 // Copyright 2025 The perfetto-mcp-rs Authors
 // SPDX-License-Identifier: Apache-2.0
 
-// Thin launcher: resolves the prebuilt perfetto-mcp-rs binary shipped in the
+// Thin launcher: resolves the prebuilt perfetto-mcp binary shipped in the
 // platform-specific optional dependency (e.g. `perfetto-mcp-darwin-arm64`) and
 // runs it with inherited stdio, so MCP JSON-RPC flows straight through.
 // Nothing may be written to stdout here: it is reserved for JSON-RPC.
@@ -17,7 +17,7 @@ function resolveBinary() {
   }
   const platformKey = `${process.platform}-${process.arch}`;
   const platformPkg = `${pkg.name}-${platformKey}`;
-  const exe = process.platform === 'win32' ? 'perfetto-mcp-rs.exe' : 'perfetto-mcp-rs';
+  const exe = process.platform === 'win32' ? 'perfetto-mcp.exe' : 'perfetto-mcp';
   try {
     return require.resolve(`${platformPkg}/bin/${exe}`);
   } catch {

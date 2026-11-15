@@ -1,4 +1,4 @@
-# Install perfetto-mcp-rs and register it with Claude Code / Codex.
+# Install perfetto-mcp and register it with Claude Code / Codex.
 #
 # Usage:
 #   irm https://raw.githubusercontent.com/ilicmarko/perfetto-mcp/main/install.ps1 | iex
@@ -24,8 +24,8 @@ function Install-PerfettoMcp {
     $repo       = if ($env:REPO)        { $env:REPO }        else { 'ilicmarko/perfetto-mcp' }
     $installDir = if ($env:INSTALL_DIR) { $env:INSTALL_DIR } else { Join-Path $HOME '.local\bin' }
     $version    = if ($env:VERSION)     { $env:VERSION }     else { 'latest' }
-    $asset      = 'perfetto-mcp-rs-windows-amd64.exe'
-    $binName    = 'perfetto-mcp-rs.exe'
+    $asset      = 'perfetto-mcp-windows-amd64.exe'
+    $binName    = 'perfetto-mcp.exe'
 
     function _info($m) { Write-Host "==> $m" }
     function _warn($m) { Write-Host "warning: $m" -ForegroundColor Yellow }
@@ -60,7 +60,7 @@ function Install-PerfettoMcp {
         "https://github.com/$repo/releases/download/$version/$asset"
     }
 
-    _info "installing perfetto-mcp-rs ($version) from $repo"
+    _info "installing perfetto-mcp ($version) from $repo"
 
     New-Item -ItemType Directory -Force -Path $installDir | Out-Null
     $dest = Join-Path $installDir $binName

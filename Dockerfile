@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 #
-# Build the perfetto-mcp-rs MCP server in a multi-stage container.
+# Build the perfetto-mcp MCP server in a multi-stage container.
 #
 # Glama and similar registries spin this up to verify the server starts and
 # responds to MCP introspection (`tools/list`). No trace file is required for
@@ -26,9 +26,9 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/* \
  && useradd --create-home --uid 1000 mcp
 
-COPY --from=builder /build/target/release/perfetto-mcp-rs /usr/local/bin/perfetto-mcp-rs
+COPY --from=builder /build/target/release/perfetto-mcp /usr/local/bin/perfetto-mcp
 
 USER mcp
 WORKDIR /home/mcp
 
-ENTRYPOINT ["/usr/local/bin/perfetto-mcp-rs"]
+ENTRYPOINT ["/usr/local/bin/perfetto-mcp"]

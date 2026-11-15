@@ -20,13 +20,13 @@
 
 use std::path::Path;
 
-use perfetto_mcp_rs::params::{
+use perfetto_mcp::params::{
     ChromeMainThreadHotspotsFilters, ChromePageLoadResourceHotspotsFilters,
     ChromePageLoadResourcePipelineFilters, ChromePageLoadResourceSummaryFilters,
     ChromePageLoadResourceUrlGrouping, ChromePageLoadScriptHotspotsFilters,
     ChromePageLoadWindowFilters,
 };
-use perfetto_mcp_rs::sql_templates::{
+use perfetto_mcp::sql_templates::{
     chrome_main_thread_hotspots_sql, chrome_page_load_resource_hotspots_sql,
     chrome_page_load_resource_pipeline_sql, chrome_page_load_resource_summary_sql,
     chrome_page_load_resource_timing_evidence_sql, chrome_page_load_script_hotspots_sql,
@@ -37,7 +37,7 @@ use perfetto_mcp_rs::sql_templates::{
     CHROME_TRACE_PREFLIGHT_SQL, CHROME_WEB_CONTENT_INTERACTIONS_COUNT_SQL,
     CHROME_WEB_CONTENT_INTERACTIONS_SQL,
 };
-use perfetto_mcp_rs::tp_manager::TraceProcessorManager;
+use perfetto_mcp::tp_manager::TraceProcessorManager;
 
 #[test]
 fn e2e_chrome_scroll_jank_summary_against_fixture() {
@@ -179,7 +179,7 @@ fn e2e_chrome_page_load_resource_hotspots_sql_runs_cleanly() {
         let sql = chrome_page_load_resource_hotspots_sql(ChromePageLoadResourceHotspotsFilters {
             window: ChromePageLoadWindowFilters {
                 page_load_id: Some(1),
-                phase: Some(perfetto_mcp_rs::params::ChromePageLoadPhase::NavigationToFcp),
+                phase: Some(perfetto_mcp::params::ChromePageLoadPhase::NavigationToFcp),
                 ..Default::default()
             },
             min_dur_ms: Some(0.0),
@@ -300,7 +300,7 @@ fn e2e_chrome_page_load_resource_summary_synthetic_ambiguous_window_against_fixt
         let sql = chrome_page_load_resource_summary_sql(ChromePageLoadResourceSummaryFilters {
             window: ChromePageLoadWindowFilters {
                 page_load_id: Some(1),
-                phase: Some(perfetto_mcp_rs::params::ChromePageLoadPhase::NavigationToFcp),
+                phase: Some(perfetto_mcp::params::ChromePageLoadPhase::NavigationToFcp),
                 ..Default::default()
             },
             min_overlap_ms: Some(0.0),
@@ -465,7 +465,7 @@ fn e2e_chrome_page_load_resource_summary_synthetic_ambiguous_window_against_fixt
         let evidence_sql =
             chrome_page_load_resource_timing_evidence_sql(ChromePageLoadWindowFilters {
                 page_load_id: Some(1),
-                phase: Some(perfetto_mcp_rs::params::ChromePageLoadPhase::NavigationToFcp),
+                phase: Some(perfetto_mcp::params::ChromePageLoadPhase::NavigationToFcp),
                 ..Default::default()
             })
             .expect("resource evidence SQL builder must succeed");
@@ -547,7 +547,7 @@ fn e2e_chrome_page_load_resource_pipeline_sql_runs_cleanly() {
         let sql = chrome_page_load_resource_pipeline_sql(ChromePageLoadResourcePipelineFilters {
             window: ChromePageLoadWindowFilters {
                 page_load_id: Some(1),
-                phase: Some(perfetto_mcp_rs::params::ChromePageLoadPhase::NavigationToFcp),
+                phase: Some(perfetto_mcp::params::ChromePageLoadPhase::NavigationToFcp),
                 ..Default::default()
             },
             url_substring: Some("main"),
@@ -629,7 +629,7 @@ fn e2e_chrome_page_load_resource_pipeline_substring_stays_on_matched_url() {
         let sql = chrome_page_load_resource_pipeline_sql(ChromePageLoadResourcePipelineFilters {
             window: ChromePageLoadWindowFilters {
                 page_load_id: Some(7),
-                phase: Some(perfetto_mcp_rs::params::ChromePageLoadPhase::NavigationToFcp),
+                phase: Some(perfetto_mcp::params::ChromePageLoadPhase::NavigationToFcp),
                 ..Default::default()
             },
             url_substring: Some("Astronomy"),
@@ -689,7 +689,7 @@ fn e2e_chrome_page_load_script_hotspots_sql_runs_cleanly() {
         let sql = chrome_page_load_script_hotspots_sql(ChromePageLoadScriptHotspotsFilters {
             window: ChromePageLoadWindowFilters {
                 page_load_id: Some(1),
-                phase: Some(perfetto_mcp_rs::params::ChromePageLoadPhase::NavigationToFcp),
+                phase: Some(perfetto_mcp::params::ChromePageLoadPhase::NavigationToFcp),
                 ..Default::default()
             },
             min_total_ms: Some(0.0),
@@ -757,7 +757,7 @@ fn e2e_chrome_main_thread_hotspots_against_fixture() {
 
         let windowed_sql = chrome_main_thread_hotspots_sql(ChromeMainThreadHotspotsFilters {
             page_load_id: Some(1),
-            phase: Some(perfetto_mcp_rs::params::ChromeMainThreadHotspotsPhase::NavigationToFcp),
+            phase: Some(perfetto_mcp::params::ChromeMainThreadHotspotsPhase::NavigationToFcp),
             min_dur_ms: Some(0.0),
             ..Default::default()
         })
@@ -770,9 +770,7 @@ fn e2e_chrome_main_thread_hotspots_against_fixture() {
         let navigation_windowed_sql =
             chrome_main_thread_hotspots_sql(ChromeMainThreadHotspotsFilters {
                 navigation_id: Some(7),
-                phase: Some(
-                    perfetto_mcp_rs::params::ChromeMainThreadHotspotsPhase::NavigationToFcp,
-                ),
+                phase: Some(perfetto_mcp::params::ChromeMainThreadHotspotsPhase::NavigationToFcp),
                 min_dur_ms: Some(0.0),
                 ..Default::default()
             })

@@ -1,4 +1,4 @@
-# Uninstall perfetto-mcp-rs and deregister it from Claude Code / Codex.
+# Uninstall perfetto-mcp and deregister it from Claude Code / Codex.
 #
 # Usage:
 #   irm https://raw.githubusercontent.com/ilicmarko/perfetto-mcp/main/uninstall.ps1 | iex
@@ -36,7 +36,7 @@ function Uninstall-PerfettoMcp {
     $installDirOverridden = [bool]$env:INSTALL_DIR
     $installDir = if ($installDirOverridden) { $env:INSTALL_DIR } else { Join-Path $HOME '.local\bin' }
     $scope      = if ($env:SCOPE) { $env:SCOPE } else { 'user' }
-    $binName    = 'perfetto-mcp-rs.exe'
+    $binName    = 'perfetto-mcp.exe'
     $dest       = Join-Path $installDir $binName
 
     function _info($m) { Write-Host "==> $m" }
@@ -58,7 +58,7 @@ function Uninstall-PerfettoMcp {
         $result
     }
 
-    _info "uninstalling perfetto-mcp-rs from $installDir (scope=$scope)"
+    _info "uninstalling perfetto-mcp from $installDir (scope=$scope)"
     if ($installDirOverridden) {
         _info "using INSTALL_DIR=$installDir (override). Must match the install-time value."
     }
@@ -104,7 +104,7 @@ function Uninstall-PerfettoMcp {
                 _warn "old binary (v0.7) without 'uninstall' subcommand; manual cleanup needed:"
                 _warn "  claude mcp remove perfetto-mcp-rs --scope user"
                 _warn "  codex  mcp remove perfetto-mcp-rs"
-                _warn "  cache: Remove-Item -Recurse -Force `"`$env:LOCALAPPDATA\perfetto-mcp-rs`""
+                _warn "  cache: Remove-Item -Recurse -Force `"`$env:LOCALAPPDATA\perfetto-mcp`""
                 $removable = $true
             }
         } else {
@@ -132,7 +132,7 @@ function Uninstall-PerfettoMcp {
         _warn "If you also had a --scope local/project registration, from that project dir run:"
         _warn "  claude mcp remove perfetto-rs --scope local    # or --scope project"
         _warn "Cache not auto-cleaned (binary missing). Remove manually:"
-        _warn "  Remove-Item -Recurse -Force `"`$env:LOCALAPPDATA\perfetto-mcp-rs`""
+        _warn "  Remove-Item -Recurse -Force `"`$env:LOCALAPPDATA\perfetto-mcp`""
         $removable = $true
     }
 

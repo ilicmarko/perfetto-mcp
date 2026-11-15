@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Install perfetto-mcp-rs and register it with Claude Code / Codex.
+# Install perfetto-mcp and register it with Claude Code / Codex.
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/ilicmarko/perfetto-mcp/main/install.sh | sh
@@ -55,7 +55,7 @@ done
 # target project directory.
 : "${SCOPE:=user}"
 
-BIN_NAME="perfetto-mcp-rs"
+BIN_NAME="perfetto-mcp"
 
 err() { printf 'error: %s\n' "$1" >&2; exit 1; }
 info() { printf '==> %s\n' "$1"; }

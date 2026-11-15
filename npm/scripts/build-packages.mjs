@@ -6,7 +6,7 @@
 //
 //   node npm/scripts/build-packages.mjs --artifacts <dir> --out <dir> [--version X.Y.Z]
 //
-// <artifacts> holds the release assets (perfetto-mcp-rs-darwin-arm64, ...).
+// <artifacts> holds the release assets (perfetto-mcp-darwin-arm64, ...).
 // Produces <out>/<platform-pkg>/ for every platform plus <out>/<main-pkg>/,
 // with the main package's optionalDependencies pinned to the exact version.
 // Version defaults to Cargo.toml's, which is the single source of truth.
@@ -20,11 +20,11 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 // npm `os`/`cpu` values -> release asset name produced by release.yml.
 export const PLATFORMS = [
-  { os: 'darwin', cpu: 'arm64', asset: 'perfetto-mcp-rs-darwin-arm64' },
-  { os: 'darwin', cpu: 'x64', asset: 'perfetto-mcp-rs-darwin-amd64' },
-  { os: 'linux', cpu: 'arm64', asset: 'perfetto-mcp-rs-linux-arm64' },
-  { os: 'linux', cpu: 'x64', asset: 'perfetto-mcp-rs-linux-amd64' },
-  { os: 'win32', cpu: 'x64', asset: 'perfetto-mcp-rs-windows-amd64.exe' },
+  { os: 'darwin', cpu: 'arm64', asset: 'perfetto-mcp-darwin-arm64' },
+  { os: 'darwin', cpu: 'x64', asset: 'perfetto-mcp-darwin-amd64' },
+  { os: 'linux', cpu: 'arm64', asset: 'perfetto-mcp-linux-arm64' },
+  { os: 'linux', cpu: 'x64', asset: 'perfetto-mcp-linux-amd64' },
+  { os: 'win32', cpu: 'x64', asset: 'perfetto-mcp-windows-amd64.exe' },
 ];
 
 function cargoVersion() {
@@ -70,7 +70,7 @@ for (const { os, cpu, asset } of PLATFORMS) {
   if (!existsSync(src)) throw new Error(`missing release asset: ${src}`);
   const name = `${main.name}-${os}-${cpu}`;
   const dir = join(out, name.replace('/', '__'));
-  const exe = os === 'win32' ? 'perfetto-mcp-rs.exe' : 'perfetto-mcp-rs';
+  const exe = os === 'win32' ? 'perfetto-mcp.exe' : 'perfetto-mcp';
   mkdirSync(join(dir, 'bin'), { recursive: true });
   copyFileSync(src, join(dir, 'bin', exe));
   chmodSync(join(dir, 'bin', exe), 0o755);
@@ -79,7 +79,7 @@ for (const { os, cpu, asset } of PLATFORMS) {
   }
   writeFileSync(
     join(dir, 'README.md'),
-    `# ${name}\n\nPrebuilt \`perfetto-mcp-rs\` binary for ${os}-${cpu}. ` +
+    `# ${name}\n\nPrebuilt \`perfetto-mcp\` binary for ${os}-${cpu}. ` +
       `Do not install directly; use [\`${main.name}\`](https://www.npmjs.com/package/${main.name}).\n`,
   );
   writeJson(join(dir, 'package.json'), {

@@ -1,4 +1,4 @@
-# perfetto-mcp-rs
+# perfetto-mcp
 
 [![npm](https://img.shields.io/npm/v/perfetto-mcp?logo=npm)](https://www.npmjs.com/package/perfetto-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/perfetto-mcp)](https://www.npmjs.com/package/perfetto-mcp)
@@ -18,8 +18,10 @@
 > (MIT OR Apache-2.0, see [`LICENSE-MIT`](LICENSE-MIT) and
 > [`LICENSE-APACHE`](LICENSE-APACHE)) and copyright notices are retained.
 >
-> Releases, the npm package (`perfetto-mcp`), the install scripts, and
-> `update` / `check-update` all use **this fork's** releases.
+> Releases, the npm package and crate (`perfetto-mcp`), the Homebrew tap
+> (`ilicmarko/tap`), the install scripts, and `update` / `check-update` all use
+> **this fork's** releases. The fork's binary is named `perfetto-mcp`, so it
+> never collides with an upstream `perfetto-mcp-rs` install.
 
 An [MCP](https://modelcontextprotocol.io) server that lets LLMs analyze
 [Perfetto](https://perfetto.dev) traces. Point Claude Code (or any MCP client) at
@@ -278,6 +280,23 @@ npm install -g perfetto-mcp
 claude mcp add perfetto --scope user -- perfetto-mcp
 ```
 
+**Homebrew** (macOS / Linux):
+
+```sh
+brew install ilicmarko/tap/perfetto-mcp
+claude mcp add perfetto --scope user -- perfetto-mcp
+```
+
+**Cargo** — builds from source, needs `protoc` (see [Build from source](#build-from-source)):
+
+```sh
+cargo install perfetto-mcp
+claude mcp add perfetto --scope user -- perfetto-mcp
+```
+
+Every channel installs a binary called `perfetto-mcp`, so it can sit next to
+upstream's `perfetto-mcp-rs` without clashing.
+
 If Qoder is detected during a script install, the installer prints a paste-ready
 JSON snippet (Qoder has no programmatic MCP-registration API yet — open Qoder
 Settings → MCP → + Add and paste).
@@ -296,17 +315,17 @@ concept and ignores this variable.
 **Direct binary** — supported platforms: linux amd64/arm64, macOS amd64/arm64,
 Windows amd64. Grab the binary from the
 [releases page](https://github.com/ilicmarko/perfetto-mcp/releases). Release
-assets are named `perfetto-mcp-rs-<platform>` (e.g. `perfetto-mcp-rs-linux-amd64`);
+assets are named `perfetto-mcp-<platform>` (e.g. `perfetto-mcp-linux-amd64`);
 rename or address the downloaded file explicitly when invoking `install`, and on
 Unix mark it executable first (`chmod +x`) — the subcommand refuses
 non-executable paths to avoid writing a broken MCP entry. Example:
 
 ```sh
 # Linux amd64 example — adjust the asset name for your platform.
-curl -fsSL -o perfetto-mcp-rs \
-  https://github.com/ilicmarko/perfetto-mcp/releases/latest/download/perfetto-mcp-rs-linux-amd64
-chmod +x perfetto-mcp-rs
-./perfetto-mcp-rs install --scope user --binary-path "$PWD/perfetto-mcp-rs"
+curl -fsSL -o perfetto-mcp \
+  https://github.com/ilicmarko/perfetto-mcp/releases/latest/download/perfetto-mcp-linux-amd64
+chmod +x perfetto-mcp
+./perfetto-mcp install --scope user --binary-path "$PWD/perfetto-mcp"
 ```
 
 **Manual MCP client configuration** — if the installer's auto-registration
@@ -315,7 +334,7 @@ doesn't apply to your client.
 Codex:
 
 ```sh
-codex mcp add perfetto-rs -- /absolute/path/to/perfetto-mcp-rs
+codex mcp add perfetto-rs -- /absolute/path/to/perfetto-mcp
 ```
 
 JSON-based clients (e.g. Claude Code, Claude Desktop, Cursor):
@@ -324,7 +343,7 @@ JSON-based clients (e.g. Claude Code, Claude Desktop, Cursor):
 {
   "mcpServers": {
     "perfetto-rs": {
-      "command": "/absolute/path/to/perfetto-mcp-rs"
+      "command": "/absolute/path/to/perfetto-mcp"
     }
   }
 }
@@ -346,7 +365,7 @@ npm, because it would install a second, script-managed copy.
 **Script installs** — run the update subcommand:
 
 ```sh
-perfetto-mcp-rs update
+perfetto-mcp update
 ```
 
 It pulls the latest release, safely overwrites the existing binary (with Windows
@@ -356,14 +375,14 @@ idempotently. No auto-update daemon — upgrades are explicit.
 Pin to a specific version with the `--version` flag:
 
 ```sh
-perfetto-mcp-rs update --version v0.7.0
+perfetto-mcp update --version v0.7.0
 ```
 
 For Claude local/project registrations, re-run from the original project
 directory and pass the same scope:
 
 ```sh
-perfetto-mcp-rs update --scope local
+perfetto-mcp update --scope local
 ```
 
 The raw installer one-liners still work if you prefer to drive upgrades
@@ -387,12 +406,12 @@ $env:VERSION = 'v0.7.0'; irm https://raw.githubusercontent.com/ilicmarko/perfett
 **Check for updates:**
 
 ```sh
-perfetto-mcp-rs check-update
+perfetto-mcp check-update
 ```
 
 Exits 0 if up to date (or ahead of releases — local dev build), 2 if a newer
 release exists, 1 on network or parse error. Useful for shell-prompt integrations
-and CI pre-checks. If it reports a newer release, run `perfetto-mcp-rs update`.
+and CI pre-checks. If it reports a newer release, run `perfetto-mcp update`.
 
 **Uninstall** — symmetric one-liner per platform. Deregisters from Claude Code and
 Codex, removes the binary, and deletes the cached `trace_processor_shell`.
@@ -455,7 +474,7 @@ Then:
 git clone https://github.com/ilicmarko/perfetto-mcp
 cd perfetto-mcp
 cargo build --release
-# Binary at target/release/perfetto-mcp-rs
+# Binary at target/release/perfetto-mcp
 ```
 
 Development:
@@ -489,7 +508,13 @@ been released yet and:
   notes plus a `SHA256SUMS` file,
 - publishes the npm packages: `perfetto-mcp-<os>-<cpu>` (one per platform, each
   with its binary) and then `perfetto-mcp` (the launcher, which picks the right
-  one through `optionalDependencies`), with npm provenance.
+  one through `optionalDependencies`), with npm provenance,
+- publishes the `perfetto-mcp` crate to crates.io (only when the
+  `CARGO_REGISTRY_TOKEN` secret is set),
+- regenerates `Formula/perfetto-mcp.rb` in
+  [`ilicmarko/homebrew-tap`](https://github.com/ilicmarko/homebrew-tap), then
+  verifies it with `brew install` + `brew test` (only when the
+  `HOMEBREW_TAP_TOKEN` secret is set).
 
 Pushes that don't change the version are no-ops. Each step skips work that's
 already done, so re-running the workflow (or triggering it manually) after a
@@ -499,9 +524,9 @@ To check the npm packaging locally:
 
 ```sh
 cargo build --release
-mkdir -p /tmp/art && cp target/release/perfetto-mcp-rs /tmp/art/perfetto-mcp-rs-darwin-arm64
+mkdir -p /tmp/art && cp target/release/perfetto-mcp /tmp/art/perfetto-mcp-darwin-arm64
 # build-packages.mjs requires every platform asset; placeholders are fine locally
-for a in darwin-amd64 linux-arm64 linux-amd64 windows-amd64.exe; do echo x > /tmp/art/perfetto-mcp-rs-$a; done
+for a in darwin-amd64 linux-arm64 linux-amd64 windows-amd64.exe; do echo x > /tmp/art/perfetto-mcp-$a; done
 node npm/scripts/build-packages.mjs --artifacts /tmp/art --out npm-dist
 ```
 

@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: MCPServer
 metadata:
-  name: perfetto-mcp-rs
+  name: perfetto-mcp
   description: >-
     MCP server for Perfetto trace analysis. Runs PerfettoSQL queries on
     Perfetto trace files (.pftrace / .perfetto-trace / .bin and other trace_processor-readable formats) via auto-downloaded trace_processor_shell,
@@ -22,7 +22,7 @@ spec:
     context: .
 
   runtime:
-    command: ["/usr/local/bin/perfetto-mcp-rs"]
+    command: ["/usr/local/bin/perfetto-mcp"]
     workingDir: /home/mcp
     user: mcp
 

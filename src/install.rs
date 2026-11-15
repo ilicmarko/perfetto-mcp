@@ -66,10 +66,10 @@ pub struct InstallArgs {
     /// NOT fall back to `current_exe()` even when the binary is invoking
     /// itself: on Linux `current_exe()` reads `/proc/self/exe` which is
     /// always the symlink-resolved target. For a versioned install like
-    /// `~/bin/perfetto-mcp-rs -> ~/opt/perfetto-mcp-rs-0.8.0/bin`, falling
+    /// `~/bin/perfetto-mcp -> ~/opt/perfetto-mcp-0.8.0/bin`, falling
     /// back would pin the 0.8.0 path and break future symlink re-point
     /// upgrades. Shell wrappers pass this automatically. For manual
-    /// invocation use `$(which perfetto-mcp-rs)` — `which` does NOT
+    /// invocation use `$(which perfetto-mcp)` — `which` does NOT
     /// follow symlinks, so it yields the right stable path.
     #[arg(long, required = true)]
     pub binary_path: PathBuf,
@@ -158,7 +158,7 @@ pub fn run_install(args: InstallArgs) -> Result<()> {
     // `std::path::absolute` makes the path absolute lexically (no symlink
     // resolution — matches our "preserve the `$INSTALL_DIR/<bin>` path the
     // user sees" invariant). Needed because MCP clients later spawn from
-    // their own CWD, so a relative `./perfetto-mcp-rs` would silently break.
+    // their own CWD, so a relative `./perfetto-mcp` would silently break.
     //
     // Windows POSIX paths (`/c/Users/...`) from Git Bash / MSYS are NOT
     // handled here: Rust's Windows path parser doesn't understand them and
@@ -177,7 +177,7 @@ pub fn run_install(args: InstallArgs) -> Result<()> {
     // time, long after the user has moved on.
     //
     // The executable check matters for the advertised "direct" workflow in
-    // README ("download from releases, then `perfetto-mcp-rs install
+    // README ("download from releases, then `perfetto-mcp install
     // --binary-path /path`"): browser-downloaded Unix binaries land as
     // 0644, so `is_file` isn't enough. On Windows there's no exec bit, so
     // the Unix check is gated behind `#[cfg(unix)]`.
@@ -916,7 +916,7 @@ fn qoder_manual_uninstall_outcome() -> Outcome {
         headline: "detected — manual cleanup is your responsibility".into(),
         body: format!(
             "Qoder has no programmatic API for MCP servers and its config \
-             file path isn't documented, so perfetto-mcp-rs can't verify \
+             file path isn't documented, so perfetto-mcp can't verify \
              cleanup. Open Qoder Settings → MCP and remove the \
              `{SERVER_NAME}` entry. (Uninstall will proceed regardless.)"
         ),
@@ -937,7 +937,7 @@ fn clean_cache() -> Outcome {
             Outcome::Done(format!("cache {} already absent", root.display()))
         }
         // PermissionDenied / "Access is denied" typically means another
-        // MCP client (Claude Code, Codex) has a live perfetto-mcp-rs
+        // MCP client (Claude Code, Codex) has a live perfetto-mcp
         // instance with trace_processor_shell still mapped — we can't
         // unlink it from this process. Don't escalate to Failed: Claude/
         // Codex deregistration already succeeded above, so the binary
@@ -1078,11 +1078,11 @@ mod tests {
 
     #[test]
     fn codex_toml_snippet_uses_literal_string_for_simple_path() {
-        let bin = PathBuf::from("/Users/jhon.lgh/.local/bin/perfetto-mcp-rs");
+        let bin = PathBuf::from("/Users/jhon.lgh/.local/bin/perfetto-mcp");
         let s = codex_toml_snippet(&bin);
         assert!(s.contains(&format!("[mcp_servers.{SERVER_NAME}]")));
         // Literal-string form (single-quoted) — no escape processing.
-        assert!(s.contains("command = '/Users/jhon.lgh/.local/bin/perfetto-mcp-rs'"));
+        assert!(s.contains("command = '/Users/jhon.lgh/.local/bin/perfetto-mcp'"));
     }
 
     #[test]
@@ -1090,9 +1090,9 @@ mod tests {
         // TOML literal strings don't process escapes, so backslashes
         // appear as-is. This is the correct on-disk form for Windows
         // paths if/when the desktop-app fallback expands beyond macOS.
-        let bin = PathBuf::from(r"C:\Users\me\.local\bin\perfetto-mcp-rs.exe");
+        let bin = PathBuf::from(r"C:\Users\me\.local\bin\perfetto-mcp.exe");
         let s = codex_toml_snippet(&bin);
-        assert!(s.contains(r"command = 'C:\Users\me\.local\bin\perfetto-mcp-rs.exe'"));
+        assert!(s.contains(r"command = 'C:\Users\me\.local\bin\perfetto-mcp.exe'"));
         // Belt-and-braces: must NOT have doubled backslashes (that's basic-
         // string escaping, wrong for literal strings).
         assert!(!s.contains(r"\\Users"));
@@ -1102,15 +1102,15 @@ mod tests {
     fn codex_toml_snippet_falls_back_to_basic_string_when_path_has_quote() {
         // Single quote in path forces basic-string form with escaping —
         // TOML literal strings have no way to escape `'`.
-        let bin = PathBuf::from("/tmp/it's-a-path/perfetto-mcp-rs");
+        let bin = PathBuf::from("/tmp/it's-a-path/perfetto-mcp");
         let s = codex_toml_snippet(&bin);
         // Basic string: double-quoted, no escapes needed for single quote.
-        assert!(s.contains(r#"command = "/tmp/it's-a-path/perfetto-mcp-rs""#));
+        assert!(s.contains(r#"command = "/tmp/it's-a-path/perfetto-mcp""#));
     }
 
     #[test]
     fn claude_manual_install_body_includes_desktop_section_when_detected() {
-        let bin = PathBuf::from("/usr/local/bin/perfetto-mcp-rs");
+        let bin = PathBuf::from("/usr/local/bin/perfetto-mcp");
         let body = claude_manual_install_body(&bin, ClaudeScope::User, true, false);
         // Desktop section present, CLI section absent.
         assert!(body.contains("Claude Desktop:"));
@@ -1121,19 +1121,19 @@ mod tests {
 
     #[test]
     fn claude_manual_install_body_includes_cli_section_when_detected() {
-        let bin = PathBuf::from("/usr/local/bin/perfetto-mcp-rs");
+        let bin = PathBuf::from("/usr/local/bin/perfetto-mcp");
         let body = claude_manual_install_body(&bin, ClaudeScope::User, false, true);
         assert!(!body.contains("Claude Desktop:"));
         assert!(body.contains("Claude Code (CLI):"));
         // CLI hint must include the actual paste-ready command with scope
         // and binary path the caller passed in.
         assert!(body.contains("claude mcp add perfetto-rs --scope user --"));
-        assert!(body.contains("/usr/local/bin/perfetto-mcp-rs"));
+        assert!(body.contains("/usr/local/bin/perfetto-mcp"));
     }
 
     #[test]
     fn claude_manual_install_body_includes_both_sections_when_both_detected() {
-        let bin = PathBuf::from("/usr/local/bin/perfetto-mcp-rs");
+        let bin = PathBuf::from("/usr/local/bin/perfetto-mcp");
         let body = claude_manual_install_body(&bin, ClaudeScope::User, true, true);
         assert!(body.contains("Claude Desktop:"));
         assert!(body.contains("Claude Code (CLI):"));
@@ -1147,7 +1147,7 @@ mod tests {
     fn claude_manual_install_body_propagates_local_scope_into_cli_hint() {
         // Local/Project scope skips the Desktop fallback (gated upstream),
         // but the CLI hint must echo the scope the user requested.
-        let bin = PathBuf::from("/usr/local/bin/perfetto-mcp-rs");
+        let bin = PathBuf::from("/usr/local/bin/perfetto-mcp");
         let body = claude_manual_install_body(&bin, ClaudeScope::Local, false, true);
         assert!(body.contains("--scope local"));
     }
@@ -1159,7 +1159,7 @@ mod tests {
     // they're left with a silent zombie entry.
     #[test]
     fn claude_manual_install_body_mentions_legacy_name_for_upgraders() {
-        let bin = PathBuf::from("/usr/local/bin/perfetto-mcp-rs");
+        let bin = PathBuf::from("/usr/local/bin/perfetto-mcp");
 
         // CLI subsection: paste-ready remove command for the legacy name.
         let cli_body = claude_manual_install_body(&bin, ClaudeScope::User, false, true);
@@ -1200,7 +1200,7 @@ mod tests {
     // still hiding in their TOML.
     #[test]
     fn codex_manual_install_body_mentions_legacy_table_for_upgraders() {
-        let bin = PathBuf::from("/usr/local/bin/perfetto-mcp-rs");
+        let bin = PathBuf::from("/usr/local/bin/perfetto-mcp");
         let body = codex_manual_install_body(&bin);
         assert!(
             body.contains("[mcp_servers.perfetto-mcp-rs]"),
@@ -1292,7 +1292,7 @@ mod tests {
 
     #[test]
     fn qoder_install_outcome_is_non_blocking() {
-        let bin = PathBuf::from("/usr/local/bin/perfetto-mcp-rs");
+        let bin = PathBuf::from("/usr/local/bin/perfetto-mcp");
         match qoder_manual_install_outcome(&bin) {
             Outcome::Manual { blocking, .. } => assert!(
                 !blocking,
@@ -1304,14 +1304,14 @@ mod tests {
 
     #[test]
     fn mcp_servers_json_snippet_contains_server_name_and_command() {
-        let bin = PathBuf::from("/usr/local/bin/perfetto-mcp-rs");
+        let bin = PathBuf::from("/usr/local/bin/perfetto-mcp");
         let s = mcp_servers_json_snippet(&bin);
         // Must be valid JSON the user can paste directly.
         let parsed: serde_json::Value =
             serde_json::from_str(&s).expect("snippet must emit valid JSON");
         assert_eq!(
             parsed["mcpServers"][SERVER_NAME]["command"],
-            "/usr/local/bin/perfetto-mcp-rs"
+            "/usr/local/bin/perfetto-mcp"
         );
     }
 
@@ -1320,13 +1320,13 @@ mod tests {
         // serde_json must escape `\` so the pasted JSON parses inside the
         // target client. Manual string-formatting would be a footgun; this
         // guards against someone "simplifying" the builder later.
-        let bin = PathBuf::from(r"C:\Users\me\.local\bin\perfetto-mcp-rs.exe");
+        let bin = PathBuf::from(r"C:\Users\me\.local\bin\perfetto-mcp.exe");
         let s = mcp_servers_json_snippet(&bin);
         let parsed: serde_json::Value =
             serde_json::from_str(&s).expect("snippet must emit valid JSON");
         assert_eq!(
             parsed["mcpServers"][SERVER_NAME]["command"],
-            r"C:\Users\me\.local\bin\perfetto-mcp-rs.exe"
+            r"C:\Users\me\.local\bin\perfetto-mcp.exe"
         );
         // Belt-and-braces: the on-the-wire form must contain escaped
         // backslashes, not raw ones.

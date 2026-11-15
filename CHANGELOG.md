@@ -15,8 +15,12 @@
   `optionalDependencies`. `update` refuses to run when launched via npm.
 - **Automatic releases.** Merging a `Cargo.toml` version bump to `main` runs CI,
   builds all targets, creates the GitHub release (with `SHA256SUMS`), and
-  publishes to npm with provenance. The upstream Homebrew-tap and crates.io
-  jobs are removed.
+  publishes to npm with provenance, crates.io (`cargo install perfetto-mcp`)
+  and the `ilicmarko/tap` Homebrew tap (`brew install ilicmarko/tap/perfetto-mcp`).
+- **Renamed the binary to `perfetto-mcp`** (crate, release assets, npm `bin`,
+  Docker image, and the `trace_processor_shell` cache dir too) so the fork can be
+  installed next to upstream's `perfetto-mcp-rs` without clashing. The MCP
+  registration name used by `install` is still `perfetto-rs`.
 - `check-update`, `update`, and the install scripts now use this fork's releases
   (`ilicmarko/perfetto-mcp`).
 

@@ -52,7 +52,7 @@ pub async fn run(args: UpdateArgs) -> ExitCode {
     }
     match run_inner(args).await {
         Ok(UpdateOutcome::NoUpdate { current, latest }) if current == latest => {
-            println!("perfetto-mcp-rs is already on the latest release (v{current}).");
+            println!("perfetto-mcp is already on the latest release (v{current}).");
             ExitCode::from(0)
         }
         Ok(UpdateOutcome::NoUpdate { current, latest }) => {
@@ -91,7 +91,7 @@ async fn run_inner(mut args: UpdateArgs) -> Result<UpdateOutcome> {
     let platform = current_platform();
     let invocation = installer_invocation(platform, &args);
 
-    println!("Updating perfetto-mcp-rs from v{current} to v{target}...");
+    println!("Updating perfetto-mcp from v{current} to v{target}...");
     println!("Downloading the official installer from {}", invocation.url);
     let script = fetch_installer(platform, invocation.url).await?;
     let exit = execute_installer(platform, &invocation, &script)?;
@@ -165,7 +165,7 @@ fn fetch_installer_with_curl(program: &OsStr, url: &str) -> Result<String> {
 async fn fetch_installer_with_http(url: &str) -> Result<String> {
     let client = reqwest::Client::builder()
         .timeout(REQUEST_TIMEOUT)
-        .user_agent(format!("perfetto-mcp-rs/{}", env!("CARGO_PKG_VERSION")))
+        .user_agent(format!("perfetto-mcp/{}", env!("CARGO_PKG_VERSION")))
         .build()
         .context("failed to build HTTP client")?;
 
@@ -194,12 +194,12 @@ fn validate_installer(platform: InstallerPlatform, script: &str) -> Result<()> {
     let markers: &[&str] = match platform {
         InstallerPlatform::Unix => &[
             "#!/usr/bin/env sh",
-            "BIN_NAME=\"perfetto-mcp-rs\"",
+            "BIN_NAME=\"perfetto-mcp\"",
             "main \"$@\"",
         ],
         InstallerPlatform::Windows => &[
             "function Install-PerfettoMcp",
-            "perfetto-mcp-rs-windows-amd64.exe",
+            "perfetto-mcp-windows-amd64.exe",
             "Invoke-WebRequest",
         ],
     };
@@ -342,8 +342,8 @@ fn installed_binary_path(platform: InstallerPlatform) -> Result<PathBuf> {
         .or_else(|| dirs::home_dir().map(|home| home.join(".local").join("bin")))
         .context("could not determine installer destination; set INSTALL_DIR explicitly")?;
     let name = match platform {
-        InstallerPlatform::Unix => "perfetto-mcp-rs",
-        InstallerPlatform::Windows => "perfetto-mcp-rs.exe",
+        InstallerPlatform::Unix => "perfetto-mcp",
+        InstallerPlatform::Windows => "perfetto-mcp.exe",
     };
     Ok(install_dir.join(name))
 }
@@ -370,7 +370,7 @@ fn verify_installed_version(path: &Path, expected: &Version) -> Result<Version> 
         .with_context(|| format!("{} --version returned non-UTF-8 output", path.display()))?;
     let raw = stdout
         .trim()
-        .strip_prefix("perfetto-mcp-rs ")
+        .strip_prefix("perfetto-mcp ")
         .with_context(|| {
             format!(
                 "unexpected --version output from {}: {stdout:?}",
@@ -541,8 +541,8 @@ mod tests {
     #[test]
     fn successful_installer_with_stale_binary_is_an_error() {
         let temp = tempfile::tempdir().unwrap();
-        let binary = temp.path().join("perfetto-mcp-rs");
-        write_executable(&binary, "#!/bin/sh\nprintf 'perfetto-mcp-rs 0.16.3\\n'\n");
+        let binary = temp.path().join("perfetto-mcp");
+        write_executable(&binary, "#!/bin/sh\nprintf 'perfetto-mcp 0.16.3\\n'\n");
 
         let error = verify_installed_version(&binary, &Version::parse("0.17.0").unwrap())
             .expect_err("a stale binary must fail post-install verification");
@@ -555,8 +555,8 @@ mod tests {
     #[test]
     fn post_install_verification_accepts_exact_target() {
         let temp = tempfile::tempdir().unwrap();
-        let binary = temp.path().join("perfetto-mcp-rs");
-        write_executable(&binary, "#!/bin/sh\nprintf 'perfetto-mcp-rs 0.17.0\\n'\n");
+        let binary = temp.path().join("perfetto-mcp");
+        write_executable(&binary, "#!/bin/sh\nprintf 'perfetto-mcp 0.17.0\\n'\n");
 
         assert_eq!(
             verify_installed_version(&binary, &Version::parse("0.17.0").unwrap()).unwrap(),

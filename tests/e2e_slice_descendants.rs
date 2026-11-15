@@ -7,9 +7,9 @@
 
 use std::path::Path;
 
-use perfetto_mcp_rs::params::SliceDescendantsBreakdownFilters;
-use perfetto_mcp_rs::sql_templates::slice_descendants_breakdown_sql;
-use perfetto_mcp_rs::tp_manager::TraceProcessorManager;
+use perfetto_mcp::params::SliceDescendantsBreakdownFilters;
+use perfetto_mcp::sql_templates::slice_descendants_breakdown_sql;
+use perfetto_mcp::tp_manager::TraceProcessorManager;
 
 const SLICE_DESCENDANTS_PORT: u16 = 20_101;
 
