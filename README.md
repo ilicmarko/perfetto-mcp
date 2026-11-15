@@ -1,17 +1,11 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/ilicmarko/perfetto-mcp/main/assets/brand/logo-wordmark.svg" width="820" alt="perfetto-mcp-rs logo">
-</p>
-
-<p align="center">
-  <a href="https://github.com/ilicmarko/perfetto-mcp/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ilicmarko/perfetto-mcp/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="https://github.com/ilicmarko/perfetto-mcp/releases"><img alt="Release" src="https://img.shields.io/github/v/release/ilicmarko/perfetto-mcp"></a>
-  <a href="https://www.npmjs.com/package/perfetto-mcp"><img alt="npm" src="https://img.shields.io/npm/v/perfetto-mcp"></a>
-  <a href="https://github.com/ilicmarko/perfetto-mcp/blob/main/LICENSE-MIT"><img alt="License" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue"></a>
-</p>
-
----
-
 # perfetto-mcp-rs
+
+[![npm](https://img.shields.io/npm/v/perfetto-mcp?logo=npm)](https://www.npmjs.com/package/perfetto-mcp)
+[![npm downloads](https://img.shields.io/npm/dm/perfetto-mcp)](https://www.npmjs.com/package/perfetto-mcp)
+[![Release](https://img.shields.io/github/v/release/ilicmarko/perfetto-mcp?logo=github)](https://github.com/ilicmarko/perfetto-mcp/releases/latest)
+[![CI](https://github.com/ilicmarko/perfetto-mcp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ilicmarko/perfetto-mcp/actions/workflows/ci.yml)
+[![Release workflow](https://github.com/ilicmarko/perfetto-mcp/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/ilicmarko/perfetto-mcp/actions/workflows/release.yml)
+[![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)](#license)
 
 > [!NOTE]
 > **This is a fork, maintained separately.** [`ilicmarko/perfetto-mcp`](https://github.com/ilicmarko/perfetto-mcp)
@@ -25,8 +19,7 @@
 > [`LICENSE-APACHE`](LICENSE-APACHE)) and copyright notices are retained.
 >
 > Releases, the npm package (`perfetto-mcp`), the install scripts, and
-> `update` / `check-update` all use **this fork's** releases. Homebrew and
-> crates.io still serve upstream builds.
+> `update` / `check-update` all use **this fork's** releases.
 
 An [MCP](https://modelcontextprotocol.io) server that lets LLMs analyze
 [Perfetto](https://perfetto.dev) traces. Point Claude Code (or any MCP client) at
@@ -285,11 +278,6 @@ npm install -g perfetto-mcp
 claude mcp add perfetto --scope user -- perfetto-mcp
 ```
 
-**Upstream builds** — Homebrew (`brew install tooluse-labs/tap/perfetto-mcp-rs`)
-and crates.io (`cargo install perfetto-mcp-rs`) install the **upstream**
-[`tooluse-labs/perfetto-mcp-rs`](https://github.com/tooluse-labs/perfetto-mcp-rs)
-release, not this fork.
-
 If Qoder is detected during a script install, the installer prints a paste-ready
 JSON snippet (Qoder has no programmatic MCP-registration API yet — open Qoder
 Settings → MCP → + Add and paste).
@@ -506,11 +494,6 @@ been released yet and:
 Pushes that don't change the version are no-ops. Each step skips work that's
 already done, so re-running the workflow (or triggering it manually) after a
 partial failure only finishes what's missing.
-
-**One-time setup:** create an npm automation token and save it as the
-`NPM_TOKEN` repository secret. Once the packages exist, you can switch to npm
-[trusted publishing](https://docs.npmjs.com/trusted-publishers) for each of the
-six packages (workflow `release.yml`, environment `npm`) and delete the token.
 
 To check the npm packaging locally:
 
