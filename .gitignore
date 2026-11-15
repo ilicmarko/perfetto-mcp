@@ -9,3 +9,4 @@
 # Brainstorming / writing-plans / executing-plans artifacts — local
 # workflow scratch, not source-of-truth project docs.
 /docs/superpowers/
+npm-dist/

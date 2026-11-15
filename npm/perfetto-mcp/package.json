@@ -1,0 +1,35 @@
+{
+  "name": "perfetto-mcp",
+  "version": "0.0.0-dev",
+  "description": "MCP server for Perfetto trace analysis: lets LLM agents query .perfetto-trace / .pftrace files with PerfettoSQL",
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ilicmarko/perfetto-mcp.git"
+  },
+  "homepage": "https://github.com/ilicmarko/perfetto-mcp#readme",
+  "bugs": "https://github.com/ilicmarko/perfetto-mcp/issues",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "perfetto",
+    "trace",
+    "tracing",
+    "performance",
+    "chrome",
+    "android"
+  ],
+  "bin": {
+    "perfetto-mcp": "bin/perfetto-mcp.js"
+  },
+  "files": [
+    "bin/",
+    "README.md",
+    "LICENSE-MIT",
+    "LICENSE-APACHE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "optionalDependencies": {}
+}

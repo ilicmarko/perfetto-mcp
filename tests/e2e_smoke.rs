@@ -4,14 +4,14 @@
 //! End-to-end smoke test covering the real spawn -> HTTP-RPC -> decode path.
 //!
 //! On first run this downloads `trace_processor_shell` from Perfetto's LUCI
-//! artifacts into `~/.local/share/perfetto-mcp-rs/<version>/`. Subsequent runs
+//! artifacts into `~/.local/share/perfetto-mcp/<version>/`. Subsequent runs
 //! (and CI runs with the cache hit) reuse the cached binary. Set
 //! `PERFETTO_TP_PATH` to short-circuit discovery entirely.
 
 use std::path::Path;
 
-use perfetto_mcp_rs::error::PerfettoError;
-use perfetto_mcp_rs::tp_manager::TraceProcessorManager;
+use perfetto_mcp::error::PerfettoError;
+use perfetto_mcp::tp_manager::TraceProcessorManager;
 
 /// High port so the test doesn't collide with a live MCP server that also
 /// spawns trace_processor_shell starting at the default 9001.

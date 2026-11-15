@@ -1,7 +1,5 @@
 # com.google.PerfettoMcp Technical Analysis Report
 
-**English** | [简体中文](google-perfetto-mcp-analysis.zh-CN.md)
-
 > A source-level teardown of Google's own Perfetto UI + Gemini + MCP plugin (located at `third_party/perfetto/ui/src/plugins/com.google.PerfettoMcp/` inside the Chromium repository), together with recommendations for `perfetto-mcp-rs` and a discussion of LLM substitution feasibility.
 >
 > **Analysis target versions**:

@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_call:
 
 env:
   CARGO_TERM_COLOR: always
@@ -31,6 +32,8 @@ jobs:
           cache-bin: false
 
       - run: cargo fmt --all --check
+      - name: Check npm launcher/scripts syntax
+        run: node --check npm/perfetto-mcp/bin/perfetto-mcp.js && node --check npm/scripts/build-packages.mjs && node --check .github/scripts/render-homebrew-formula.mjs
       - run: cargo clippy --all-targets -- -D warnings
 
   test:
@@ -85,9 +88,9 @@ jobs:
           context: .
           push: false
           load: true
-          tags: perfetto-mcp-rs:ci
+          tags: perfetto-mcp:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Smoke test entrypoint
-        run: docker run --rm perfetto-mcp-rs:ci --version
+        run: docker run --rm perfetto-mcp:ci --version

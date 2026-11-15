@@ -24,7 +24,7 @@ replace_epic_url() {
 epic_body="$(cat <<'EOF'
 ## Goal
 
-Track the MCP surface and context-efficiency work described in `docs/mcp-surface-implementation-tasks.zh-CN.md`.
+Track the MCP surface and context-efficiency work described in the upstream task list (https://github.com/tooluse-labs/perfetto-mcp-rs/blob/main/docs/mcp-surface-implementation-tasks.zh-CN.md).
 
 This epic is intentionally about LLM usability, routing accuracy, and context control. It is not a request to clone every Perfetto UI feature as a separate MCP tool.
 
@@ -326,7 +326,7 @@ done
 final_epic_body="$(cat <<EOF
 ## Goal
 
-Track the MCP surface and context-efficiency work described in \`docs/mcp-surface-implementation-tasks.zh-CN.md\`.
+Track the MCP surface and context-efficiency work described in the upstream task list (https://github.com/tooluse-labs/perfetto-mcp-rs/blob/main/docs/mcp-surface-implementation-tasks.zh-CN.md).
 
 This epic is intentionally about LLM usability, routing accuracy, and context control. It is not a request to clone every Perfetto UI feature as a separate MCP tool.
 

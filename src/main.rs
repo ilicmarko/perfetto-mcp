@@ -7,11 +7,11 @@ use std::time::Duration;
 use clap::{Parser, Subcommand};
 use tracing_subscriber::fmt::format::FmtSpan;
 
-use perfetto_mcp_rs::download::DownloadConfig;
-use perfetto_mcp_rs::install::{self, InstallArgs, UninstallArgs};
-use perfetto_mcp_rs::self_update::{self, UpdateArgs};
-use perfetto_mcp_rs::server::PerfettoMcpServer;
-use perfetto_mcp_rs::tp_manager::{TraceProcessorConfig, TraceProcessorManager};
+use perfetto_mcp::download::DownloadConfig;
+use perfetto_mcp::install::{self, InstallArgs, UninstallArgs};
+use perfetto_mcp::self_update::{self, UpdateArgs};
+use perfetto_mcp::server::PerfettoMcpServer;
+use perfetto_mcp::tp_manager::{TraceProcessorConfig, TraceProcessorManager};
 
 /// Perfetto trace analysis MCP server.
 ///
@@ -38,7 +38,7 @@ struct Cli {
     ///
     /// `PERFETTO_STARTUP_TIMEOUT_MS` env var is read lazily inside `run_server`,
     /// not by clap at top-level parse time — otherwise a stale/invalid env
-    /// would block `perfetto-mcp-rs install` / `uninstall` even though those
+    /// would block `perfetto-mcp install` / `uninstall` even though those
     /// subcommands don't use this value.
     #[arg(long, value_parser = clap::value_parser!(u64).range(1..))]
     startup_timeout_ms: Option<u64>,
@@ -93,7 +93,7 @@ async fn main() -> std::process::ExitCode {
     match cli.command.take() {
         Some(Command::Install(a)) => result_to_exit_code(install::run_install(a)),
         Some(Command::Uninstall(a)) => result_to_exit_code(install::run_uninstall(a)),
-        Some(Command::CheckUpdate) => perfetto_mcp_rs::check_update::run().await,
+        Some(Command::CheckUpdate) => perfetto_mcp::check_update::run().await,
         Some(Command::Update(a)) => self_update::run(a).await,
         None => result_to_exit_code(run_server(cli).await),
     }
@@ -135,7 +135,7 @@ async fn run_server(cli: Cli) -> anyhow::Result<()> {
 
     let download_config = DownloadConfig::from_override(cli.artifacts_base_url.clone());
     tracing::info!(
-        "perfetto-mcp-rs v{} (max_instances={}, max_active_instances={}, startup_timeout_ms={}, query_timeout_ms={}, span_timings={}, artifacts_base_url={})",
+        "perfetto-mcp v{} (max_instances={}, max_active_instances={}, startup_timeout_ms={}, query_timeout_ms={}, span_timings={}, artifacts_base_url={})",
         env!("CARGO_PKG_VERSION"),
         cli.max_instances,
         cli.max_active_instances,
@@ -221,14 +221,14 @@ mod tests {
 
     #[test]
     fn span_timings_cli_flag_enables_close_events() {
-        let cli = Cli::try_parse_from(["perfetto-mcp-rs", "--span-timings"]).unwrap();
+        let cli = Cli::try_parse_from(["perfetto-mcp", "--span-timings"]).unwrap();
 
         assert!(cli.span_timings);
     }
 
     #[test]
     fn span_timings_default_is_off() {
-        let cli = Cli::try_parse_from(["perfetto-mcp-rs"]).unwrap();
+        let cli = Cli::try_parse_from(["perfetto-mcp"]).unwrap();
 
         assert!(
             !resolve_span_timings(cli.span_timings, "PERFETTO_MCP_SPAN_TIMINGS_TEST_UNSET")
@@ -238,13 +238,13 @@ mod tests {
 
     #[test]
     fn active_instance_limit_defaults_to_ten_and_accepts_override() {
-        let defaults = Cli::try_parse_from(["perfetto-mcp-rs"]).unwrap();
+        let defaults = Cli::try_parse_from(["perfetto-mcp"]).unwrap();
         assert_eq!(defaults.max_active_instances, 10);
 
         let overridden =
-            Cli::try_parse_from(["perfetto-mcp-rs", "--max-active-instances", "7"]).unwrap();
+            Cli::try_parse_from(["perfetto-mcp", "--max-active-instances", "7"]).unwrap();
         assert_eq!(overridden.max_active_instances, 7);
-        assert!(Cli::try_parse_from(["perfetto-mcp-rs", "--max-active-instances", "0"]).is_err());
+        assert!(Cli::try_parse_from(["perfetto-mcp", "--max-active-instances", "0"]).is_err());
     }
 
     #[test]
@@ -266,13 +266,13 @@ mod tests {
 
     #[test]
     fn span_events_cli_option_is_removed() {
-        assert!(Cli::try_parse_from(["perfetto-mcp-rs", "--span-events", "close"]).is_err());
+        assert!(Cli::try_parse_from(["perfetto-mcp", "--span-events", "close"]).is_err());
     }
 
     #[test]
     fn update_cli_parses_version_and_scope() {
         let cli = Cli::try_parse_from([
-            "perfetto-mcp-rs",
+            "perfetto-mcp",
             "update",
             "--version",
             "v0.16.2",
@@ -292,7 +292,7 @@ mod tests {
 
     #[test]
     fn upgrade_alias_maps_to_update() {
-        let cli = Cli::try_parse_from(["perfetto-mcp-rs", "upgrade"]).unwrap();
+        let cli = Cli::try_parse_from(["perfetto-mcp", "upgrade"]).unwrap();
 
         assert!(matches!(cli.command, Some(Command::Update(_))));
     }

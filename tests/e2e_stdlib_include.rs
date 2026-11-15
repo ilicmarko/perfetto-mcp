@@ -11,7 +11,7 @@
 
 use std::path::Path;
 
-use perfetto_mcp_rs::tp_manager::TraceProcessorManager;
+use perfetto_mcp::tp_manager::TraceProcessorManager;
 
 // Offsets from e2e_smoke (19001) and deleted Chrome tests (19101–19401)
 // so parallel `cargo test` runs do not race on port allocation.

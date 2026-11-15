@@ -308,7 +308,3 @@ Release gate:
 - [ ] Install and upgrade paths are clear
 - [ ] Common failures are diagnosable
 - [ ] Enough coverage of typical Perfetto scenarios
-
-## Reference
-
-- Chinese version: `docs/roadmap.zh-CN.md`

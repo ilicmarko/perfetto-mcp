@@ -6,7 +6,7 @@ use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 
 use serde_json::{json, Value};
 
-const BIN: &str = env!("CARGO_BIN_EXE_perfetto-mcp-rs");
+const BIN: &str = env!("CARGO_BIN_EXE_perfetto-mcp");
 
 struct McpProcess {
     child: Child,
@@ -30,7 +30,7 @@ impl McpProcess {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
-            .expect("spawn perfetto-mcp-rs stdio server");
+            .expect("spawn perfetto-mcp stdio server");
         let stdin = child.stdin.take().expect("child stdin");
         let stdout = BufReader::new(child.stdout.take().expect("child stdout"));
         Self {
@@ -48,7 +48,7 @@ impl McpProcess {
                 "protocolVersion": "2025-03-26",
                 "capabilities": {},
                 "clientInfo": {
-                    "name": "perfetto-mcp-rs-e2e",
+                    "name": "perfetto-mcp-e2e",
                     "version": "0.0.0"
                 }
             }),

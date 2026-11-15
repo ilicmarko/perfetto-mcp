@@ -18,7 +18,7 @@ use semver::Version;
 use serde::Deserialize;
 
 const RELEASES_LATEST_URL: &str =
-    "https://api.github.com/repos/tooluse-labs/perfetto-mcp-rs/releases/latest";
+    "https://api.github.com/repos/ilicmarko/perfetto-mcp/releases/latest";
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// The `tag_name` and `published_at` fields from the GitHub /releases/latest
@@ -85,7 +85,7 @@ async fn check() -> Result<Outcome, CheckError> {
 pub(crate) async fn latest_version() -> Result<LatestVersion, CheckError> {
     let client = reqwest::Client::builder()
         .timeout(REQUEST_TIMEOUT)
-        .user_agent(format!("perfetto-mcp-rs/{}", env!("CARGO_PKG_VERSION")))
+        .user_agent(format!("perfetto-mcp/{}", env!("CARGO_PKG_VERSION")))
         .build()
         .map_err(|e| CheckError::Network(e.to_string()))?;
     let release = fetch_latest(&client, RELEASES_LATEST_URL).await?;
@@ -148,7 +148,7 @@ fn compare(current: Version, latest: Version, published_at: String) -> Outcome {
 }
 
 fn upgrade_hint() -> String {
-    "Run `perfetto-mcp-rs update` to upgrade.".to_owned()
+    "Run `perfetto-mcp update` to upgrade.".to_owned()
 }
 
 fn render(result: Result<Outcome, CheckError>) -> (Option<String>, Option<String>, u8) {
@@ -258,7 +258,7 @@ mod tests {
         assert!(s.contains("v0.11.3"), "got: {s}");
         assert!(s.contains("v0.12.0"), "got: {s}");
         assert!(s.contains("2026-04-30"), "got: {s}");
-        assert!(s.contains("perfetto-mcp-rs update"), "got: {s}");
+        assert!(s.contains("perfetto-mcp update"), "got: {s}");
         assert_eq!(stderr, None);
         assert_eq!(code, 2);
     }
@@ -266,7 +266,7 @@ mod tests {
     #[test]
     fn upgrade_hint_names_update_subcommand() {
         let hint = upgrade_hint();
-        assert!(hint.contains("perfetto-mcp-rs update"), "got: {hint}");
+        assert!(hint.contains("perfetto-mcp update"), "got: {hint}");
     }
 
     #[test]

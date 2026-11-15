@@ -18,7 +18,7 @@ compile `proto/trace_processor.proto`. Install via `apt install protobuf-compile
 exists it is auto-used.
 
 ```sh
-cargo build --release           # release binary at target/release/perfetto-mcp-rs
+cargo build --release           # release binary at target/release/perfetto-mcp
 cargo test --all-targets        # unit + integration tests
 cargo test <name>               # single test by substring (e.g. `cargo test e2e_smoke`)
 cargo clippy --all-targets -- -D warnings    # CI lint (warnings are errors)
@@ -30,7 +30,7 @@ pushing.
 
 Integration tests under `tests/` actually spawn `trace_processor_shell` against real fixtures
 in `tests/fixtures/`. On first run they download the binary (~35 MB, pinned to v54.0) from
-the Perfetto LUCI bucket into `dirs::data_local_dir()/perfetto-mcp-rs/<version>/`. To
+the Perfetto LUCI bucket into `dirs::data_local_dir()/perfetto-mcp/<version>/`. To
 short-circuit: `export PERFETTO_TP_PATH=/path/to/trace_processor_shell`. CI intentionally does
 **not** cache this download — every PR exercises the atomic-persist + Windows-rename-retry path.
 
@@ -121,5 +121,10 @@ parallel test runs.
 
 `Cargo.toml` is the version source of truth. Release commits follow the format
 `release(v0.13.4): <one-line summary>` (see recent git log). `CHANGELOG.md` is hand-maintained.
+Merging a version bump to `main` releases automatically: `.github/workflows/release.yml` tags
+`v<version>`, publishes the GitHub release and the npm packages (`npm/`, built by
+`npm/scripts/build-packages.mjs`), and — when their secrets exist — the `perfetto-mcp` crate
+(`CARGO_REGISTRY_TOKEN`) and the Homebrew formula in `ilicmarko/homebrew-tap`
+(`HOMEBREW_TAP_TOKEN`, rendered by `.github/scripts/render-homebrew-formula.mjs`). It fails if `CHANGELOG.md` has no `### [<version>]` section.
 `docs/roadmap.md` tracks milestone status as a snapshot of intent — individual tasks live in
 GitHub issues, not roadmap checkboxes.
