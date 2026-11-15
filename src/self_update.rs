@@ -348,16 +348,30 @@ fn installed_binary_path(platform: InstallerPlatform) -> Result<PathBuf> {
     Ok(install_dir.join(name))
 }
 
+/// Runs `<path> --version`, retrying briefly on `ETXTBSY`. Linux refuses to
+/// exec a file while any process holds it open for writing, which happens
+/// transiently when a concurrently forked child inherits the writer's fd just
+/// after the binary was written.
+fn run_version_with_busy_retry(path: &Path) -> std::io::Result<std::process::Output> {
+    let mut attempt = 0;
+    loop {
+        match Command::new(path).arg("--version").output() {
+            Err(e) if e.kind() == std::io::ErrorKind::ExecutableFileBusy && attempt < 20 => {
+                attempt += 1;
+                std::thread::sleep(Duration::from_millis(50));
+            }
+            result => return result,
+        }
+    }
+}
+
 fn verify_installed_version(path: &Path, expected: &Version) -> Result<Version> {
-    let output = Command::new(path)
-        .arg("--version")
-        .output()
-        .with_context(|| {
-            format!(
-                "installer exited successfully but {} cannot be run",
-                path.display()
-            )
-        })?;
+    let output = run_version_with_busy_retry(path).with_context(|| {
+        format!(
+            "installer exited successfully but {} cannot be run",
+            path.display()
+        )
+    })?;
     if !output.status.success() {
         bail!(
             "installer exited successfully but {} --version returned {}",

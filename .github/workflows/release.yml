@@ -37,7 +37,7 @@ jobs:
       brew_pending: ${{ steps.plan.outputs.brew_pending }}
       should_release: ${{ steps.plan.outputs.should_release }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - id: plan
         name: Compare Cargo.toml version with releases
@@ -113,17 +113,17 @@ jobs:
             os: ubuntu-24.04-arm
             asset_name: perfetto-mcp-linux-arm64
           - target: x86_64-apple-darwin
-            os: macos-14
+            os: macos-latest
             asset_name: perfetto-mcp-darwin-amd64
           - target: aarch64-apple-darwin
-            os: macos-14
+            os: macos-latest
             asset_name: perfetto-mcp-darwin-arm64
           - target: x86_64-pc-windows-msvc
             os: windows-latest
             asset_name: perfetto-mcp-windows-amd64.exe
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install protoc (Unix)
         if: runner.os != 'Windows'
@@ -177,7 +177,7 @@ jobs:
           echo "$got"
           [ "$got" = "perfetto-mcp ${{ needs.plan.outputs.version }}" ]
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.asset_name }}
           path: dist/${{ matrix.asset_name }}
@@ -191,9 +191,9 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
@@ -226,10 +226,11 @@ jobs:
             --notes-file release-notes.md
 
   npm:
-    name: Publish to npm
+    name: Stage npm packages
     needs: [plan, github-release]
-    # Publishes from the release assets, so a re-run after a partial failure
-    # ships exactly the binaries attached to the GitHub release.
+    # Stages from the release assets, so a re-run after a partial failure
+    # ships exactly the binaries attached to the GitHub release. Staged
+    # versions go live only after a maintainer approves them on npmjs.com.
     if: >-
       always() &&
       needs.plan.outputs.npm_published != 'true' &&
@@ -238,11 +239,11 @@ jobs:
     environment: npm
     permissions:
       contents: read
-      id-token: write   # npm provenance / trusted publishing
+      id-token: write   # npm trusted publishing (OIDC)
     steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ needs.plan.outputs.tag }}
+      # Packaging scripts come from this run's commit; the binaries come from
+      # the release, so a retry can pick up packaging fixes made after the tag.
+      - uses: actions/checkout@v7
 
       - name: Download release assets
         env:
@@ -254,12 +255,12 @@ jobs:
             --pattern 'perfetto-mcp-*' --pattern SHA256SUMS
           (cd dist && if command -v sha256sum >/dev/null; then sha256sum -c SHA256SUMS; else shasum -a 256 -c SHA256SUMS; fi)
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
 
-      - name: Use npm >= 11.5 (trusted publishing support)
+      - name: Use npm >= 11.15 (staged publishing)
         run: npm install -g npm@latest
 
       - name: Build npm packages
@@ -276,34 +277,44 @@ jobs:
           for d in npm-dist/*/; do (cd "$d" && npm pack --pack-destination "$GITHUB_WORKSPACE/tgz" >/dev/null); done
           cd smoke
           npm init -y >/dev/null
-          npm install --no-audit --no-fund "../tgz/$NAME-$VERSION.tgz" "../tgz/$NAME-linux-x64-$VERSION.tgz"
+          npm install --no-audit --no-fund "../tgz/$NAME-$VERSION.tgz" "../tgz/$(node -p "require('../npm-dist/$NAME/package.json').binaryPackages['linux-x64'].replace(/^@/, '').replace('/', '-')")-$VERSION.tgz"
           got=$(npx --no-install "$NAME" --version)
           echo "$got"
           [ "$got" = "perfetto-mcp $VERSION" ]
 
-      - name: Publish (platform packages first, then main)
+      # Authenticates through the trusted publisher configured on each npm
+      # package (OIDC, no token). Approve the staged versions with 2FA on
+      # npmjs.com or with `npm stage approve`; platform packages first.
+      - name: Stage (platform packages first, then main)
         shell: bash
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           VERSION: ${{ needs.plan.outputs.version }}
         run: |
           set -euo pipefail
           MAIN=$(node -p "require('./npm/perfetto-mcp/package.json').name")
-          publish() {
-            local dir=$1 name
+          stage() {
+            local dir=$1 name out
             name=$(node -p "require('./$dir/package.json').name")
             if npm view "$name@$VERSION" version >/dev/null 2>&1; then
               echo "::notice::$name@$VERSION already published; skipping"
               return
             fi
-            (cd "$dir" && npm publish --access public --provenance)
+            if out=$(cd "$dir" && npm stage publish --access public --provenance 2>&1); then
+              echo "$out"
+              echo "::notice::$name@$VERSION staged; approve it on npmjs.com"
+            elif grep -qiE 'already (exists|staged)|cannot publish over|E409' <<<"$out"; then
+              echo "::notice::$name@$VERSION is already staged; waiting for approval"
+            else
+              echo "$out" >&2
+              return 1
+            fi
           }
           for dir in npm-dist/*/; do
             dir=${dir%/}
             [ "$(node -p "require('./$dir/package.json').name")" = "$MAIN" ] && continue
-            publish "$dir"
+            stage "$dir"
           done
-          publish "npm-dist/${MAIN/\//__}"
+          stage "npm-dist/${MAIN/\//__}"
 
   crates:
     name: Publish to crates.io
@@ -314,7 +325,7 @@ jobs:
       (needs.github-release.result == 'success' || needs.plan.outputs.release_exists == 'true')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.plan.outputs.tag }}
 
@@ -341,11 +352,11 @@ jobs:
       always() &&
       needs.plan.outputs.brew_pending == 'true' &&
       (needs.github-release.result == 'success' || needs.plan.outputs.release_exists == 'true')
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ needs.plan.outputs.tag }}
+      # Packaging scripts come from this run's commit; the binaries come from
+      # the release, so a retry can pick up packaging fixes made after the tag.
+      - uses: actions/checkout@v7
 
       - name: Download release assets
         env:
@@ -357,7 +368,7 @@ jobs:
             --pattern 'perfetto-mcp-*' --pattern SHA256SUMS
           (cd dist && if command -v sha256sum >/dev/null; then sha256sum -c SHA256SUMS; else shasum -a 256 -c SHA256SUMS; fi)
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: ${{ github.repository_owner }}/homebrew-tap
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}

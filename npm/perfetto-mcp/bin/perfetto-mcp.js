@@ -16,15 +16,14 @@ function resolveBinary() {
     return process.env.PERFETTO_MCP_BINARY;
   }
   const platformKey = `${process.platform}-${process.arch}`;
-  const platformPkg = `${pkg.name}-${platformKey}`;
+  const packages = pkg.binaryPackages || {};
+  const platformPkg = packages[platformKey] || `${pkg.name}-${platformKey}`;
   const exe = process.platform === 'win32' ? 'perfetto-mcp.exe' : 'perfetto-mcp';
   try {
     return require.resolve(`${platformPkg}/bin/${exe}`);
   } catch {
     const optional = pkg.optionalDependencies || {};
-    const supported = Object.keys(optional)
-      .map((name) => name.slice(pkg.name.length + 1))
-      .join(', ');
+    const supported = Object.keys(packages).join(', ');
     process.stderr.write(
       Object.prototype.hasOwnProperty.call(optional, platformPkg)
         ? `perfetto-mcp: the binary package "${platformPkg}" is not installed.\n` +

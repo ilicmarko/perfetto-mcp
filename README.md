@@ -4,69 +4,54 @@
 [![npm downloads](https://img.shields.io/npm/dm/perfetto-mcp)](https://www.npmjs.com/package/perfetto-mcp)
 [![Release](https://img.shields.io/github/v/release/ilicmarko/perfetto-mcp?logo=github)](https://github.com/ilicmarko/perfetto-mcp/releases/latest)
 [![CI](https://github.com/ilicmarko/perfetto-mcp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ilicmarko/perfetto-mcp/actions/workflows/ci.yml)
-[![Release workflow](https://github.com/ilicmarko/perfetto-mcp/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/ilicmarko/perfetto-mcp/actions/workflows/release.yml)
 [![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)](#license)
 
-> [!NOTE]
-> **This is a fork, maintained separately.** [`ilicmarko/perfetto-mcp`](https://github.com/ilicmarko/perfetto-mcp)
-> is an independently maintained fork of
-> [`tooluse-labs/perfetto-mcp-rs`](https://github.com/tooluse-labs/perfetto-mcp-rs),
-> created and maintained by the perfetto-mcp-rs authors. All credit for the original
-> design and implementation goes to them. The fork may diverge from upstream (for
-> example, it upgrades `rmcp` so the server works with GitHub Copilot CLI), and
-> issues here should not be reported upstream. The original license terms
-> (MIT OR Apache-2.0, see [`LICENSE-MIT`](LICENSE-MIT) and
-> [`LICENSE-APACHE`](LICENSE-APACHE)) and copyright notices are retained.
->
-> Releases, the npm package and crate (`perfetto-mcp`), the Homebrew tap
-> (`ilicmarko/tap`), the install scripts, and `update` / `check-update` all use
-> **this fork's** releases. The fork's binary is named `perfetto-mcp`, so it
-> never collides with an upstream `perfetto-mcp-rs` install.
+An [MCP](https://modelcontextprotocol.io) server that lets AI agents analyze
+[Perfetto](https://perfetto.dev) traces. Point your MCP client at a trace file
+(`.pftrace`, `.perfetto-trace`, `.bin`, … — the format is sniffed from content)
+and ask questions in plain language.
 
-An [MCP](https://modelcontextprotocol.io) server that lets LLMs analyze
-[Perfetto](https://perfetto.dev) traces. Point Claude Code (or any MCP client) at
-a trace file (`.pftrace` / `.perfetto-trace` / `.bin` / … — content-sniffed) and
-ask in plain language. The server runs PerfettoSQL under the hood, backed by
-`trace_processor_shell` — downloaded automatically on first run, no manual
-Perfetto install required.
+- **No Perfetto install needed.** `trace_processor_shell` is downloaded on first run.
+- **Dedicated tools** for common Chrome analyses (scroll jank, page loads, startup, INP).
+- **Raw PerfettoSQL** for everything else, steered toward the right stdlib modules.
+- **Redacts** URLs, headers, cookies and local paths by default.
 
-> Dedicated tools ship curated SQL; for custom analysis the agent writes PerfettoSQL — steered toward the right stdlib modules.
+> Independently maintained fork of
+> [`tooluse-labs/perfetto-mcp-rs`](https://github.com/tooluse-labs/perfetto-mcp-rs).
+> See [About this fork](#about-this-fork).
+
+## Contents
+
+- [Quick start](#quick-start)
+- [Tools](#tools)
+- [Analyzing traces](#analyzing-traces)
+- [Configuration](#configuration)
+- [Install options](#install-options)
+- [Upgrade & uninstall](#upgrade--uninstall)
+- [Build from source](#build-from-source)
+- [Releasing](#releasing)
+- [About this fork](#about-this-fork)
+- [License](#license)
 
 ## Quick start
 
-You drive perfetto-mcp through an MCP client (Claude Code, Copilot CLI, VS Code,
-Cursor, Codex, …). The only requirement is [Node.js](https://nodejs.org) 18+:
-`npx` fetches a prebuilt native binary for your platform, nothing is compiled.
+The only requirement is [Node.js](https://nodejs.org) 18+. `npx` fetches a
+prebuilt native binary for your platform; nothing is compiled. Prefer no Node.js?
+See [Install options](#install-options).
 
-**1. Add the server to your client.** Every client runs the same command:
-`npx -y perfetto-mcp@latest`.
+### 1. Add the server to your client
 
-<details open>
-<summary><b>Claude Code</b></summary>
+Every client runs the same command: `npx -y perfetto-mcp@latest`.
 
-```sh
-claude mcp add perfetto --scope user -- npx -y perfetto-mcp@latest
-```
-
-</details>
-
-<details>
-<summary><b>GitHub Copilot CLI</b></summary>
-
-```sh
-copilot mcp add perfetto -- npx -y perfetto-mcp@latest
-```
-
-</details>
+| Client | Command |
+|---|---|
+| Claude Code | `claude mcp add perfetto --scope user -- npx -y perfetto-mcp@latest` |
+| GitHub Copilot CLI | `copilot mcp add perfetto -- npx -y perfetto-mcp@latest` |
+| Codex | `codex mcp add perfetto -- npx -y perfetto-mcp@latest` |
+| VS Code | `code --add-mcp '{"name":"perfetto","command":"npx","args":["-y","perfetto-mcp@latest"]}'` |
 
 <details>
-<summary><b>VS Code (Copilot Chat)</b></summary>
-
-```sh
-code --add-mcp '{"name":"perfetto","command":"npx","args":["-y","perfetto-mcp@latest"]}'
-```
-
-Or add it to `.vscode/mcp.json` for a single workspace:
+<summary><b>VS Code workspace config (<code>.vscode/mcp.json</code>)</b></summary>
 
 ```json
 {
@@ -83,16 +68,7 @@ Or add it to `.vscode/mcp.json` for a single workspace:
 </details>
 
 <details>
-<summary><b>Codex</b></summary>
-
-```sh
-codex mcp add perfetto -- npx -y perfetto-mcp@latest
-```
-
-</details>
-
-<details>
-<summary><b>Cursor, Claude Desktop, Windsurf, Qoder, other JSON-configured clients</b></summary>
+<summary><b>Cursor, Claude Desktop, Windsurf, Qoder and other JSON-configured clients</b></summary>
 
 ```json
 {
@@ -109,33 +85,23 @@ Cursor: `~/.cursor/mcp.json`. Claude Desktop: Settings → Developer → Edit Co
 
 </details>
 
-<details>
-<summary><b>Windows note</b></summary>
+> [!TIP]
+> On Windows, some clients can't spawn `npx` directly. If the server fails to
+> start, use `"command": "cmd"` with `"args": ["/c", "npx", "-y", "perfetto-mcp@latest"]`.
 
-Some clients can't spawn `npx` directly on Windows. If the server fails to
-start, use `"command": "cmd"` with `"args": ["/c", "npx", "-y", "perfetto-mcp@latest"]`.
+Restart the client (or start a new session) to pick up the server.
 
-</details>
-
-Restart the client (or start a new session) to pick it up. Prefer a standalone
-binary without Node.js? See [Install options](#install-options).
-
-**2. Ask in plain language:**
+### 2. Ask a question
 
 > Load `~/traces/scroll_jank.pftrace` and tell me the top scroll-jank causes.
 
-Swap in any Perfetto trace you have — captured from the Perfetto UI,
-`chrome://tracing`, or `record_android_trace`.
+Any Perfetto trace works — from the Perfetto UI, `chrome://tracing`, or
+`record_android_trace`. The agent calls `load_trace`, sees it's a Chrome trace,
+and uses the dedicated `chrome_scroll_jank_summary` tool. Questions outside the
+dedicated tools fall back to `execute_sql` with raw PerfettoSQL.
 
-The agent calls `load_trace`, sees it's a Chrome trace, and reaches for the
-dedicated `chrome_scroll_jank_summary` tool — no SQL to hand-write. When a
-question falls outside the dedicated tools, it drops down to `execute_sql` with
-raw PerfettoSQL on the same trace.
-
-Works best with agentic clients (Claude Code, Codex, Claude Desktop, Cursor)
-that chain multi-turn tool calls and follow the server's error-message nudges.
-Non-agentic clients see the same tools and error nudges, but won't chain the
-guided flow automatically.
+Agentic clients (Claude Code, Copilot CLI, Codex, Cursor) work best: they chain
+tool calls and follow the server's error-message hints.
 
 ## Tools
 
@@ -184,7 +150,7 @@ authorization or execution boundaries.
 |---|---|
 | `resource://perfetto-mcp/stdlib-quickref` | On-demand PerfettoSQL stdlib quick reference for Chrome, Android, and generic traces |
 
-## Analyzing a trace
+## Analyzing traces
 
 The right path depends on the trace type:
 
@@ -204,7 +170,7 @@ The right path depends on the trace type:
   via `execute_sql` + `INCLUDE PERFETTO MODULE`. No module fits? Fall back to
   `list_tables` / `list_table_structure` for schema discovery, then `execute_sql`.
 
-### Analyzing multiple traces
+### Multiple traces
 
 Load comparison targets together with `load_trace(paths=[...])`. The response
 returns one stable `trace_id` per file. Run the same trace-bound tool for each id
@@ -212,6 +178,8 @@ returns one stable `trace_id` per file. Run the same trace-bound tool for each i
 the returned evidence. Calls without `trace_id` remain backward compatible and
 use the most recently loaded trace. If a loaded file changes on disk, its old id
 is rejected with an explicit instruction to reload it.
+
+### Privacy and precision
 
 **Privacy** — tool results enter the LLM context, and real traces can hold URLs,
 headers, cookies, and local paths. `execute_sql` and the dedicated Chrome tools
@@ -224,7 +192,7 @@ policy in its summary.
 `max_string_len` only when you explicitly want to trade detail for a smaller
 response.
 
-## Under the hood: dedicated tool vs. raw SQL
+### Dedicated tool vs. raw SQL
 
 The scroll-jank question above resolves to a single `chrome_scroll_jank_summary`
 call — no SQL to write. When you need a cut the dedicated tools don't expose, the
@@ -492,33 +460,29 @@ cargo fmt           # format
 <details>
 <summary>How a merge to <code>main</code> becomes a release</summary>
 
-`Cargo.toml` is the version source of truth. To ship a release:
+`Cargo.toml` is the version source of truth. To ship a release, bump `version` in
+`Cargo.toml` (run `cargo build` so `Cargo.lock` follows), add a `### [X.Y.Z]`
+section to `CHANGELOG.md`, and merge to `main`.
 
-1. In your PR, bump `version` in `Cargo.toml` (and run `cargo build` so
-   `Cargo.lock` follows) and add a `### [X.Y.Z]` section to `CHANGELOG.md`.
-2. Merge to `main`.
+[`release.yml`](.github/workflows/release.yml) then:
 
-[`release.yml`](.github/workflows/release.yml) then notices that `vX.Y.Z` hasn't
-been released yet and:
+1. re-runs CI (fmt, clippy, tests on Linux / macOS / Windows),
+2. builds static binaries for linux x64/arm64 (musl), macOS x64/arm64 and Windows x64,
+3. creates the `vX.Y.Z` tag and GitHub release, with the CHANGELOG section as
+   notes and a `SHA256SUMS` file,
+4. **stages** the npm packages through trusted publishing (OIDC, no token): one
+   `perfetto-mcp-<os>-<cpu>` package per platform (Windows is
+   `@ilicmarko/perfetto-mcp-win32-x64`, as npm's spam filter blocked the
+   unscoped name) and the `perfetto-mcp` launcher. A maintainer then approves the
+   staged versions with 2FA on npmjs.com, platform packages first,
+5. publishes the crate to crates.io (only if `CARGO_REGISTRY_TOKEN` is set),
+6. updates `Formula/perfetto-mcp.rb` in
+   [`ilicmarko/homebrew-tap`](https://github.com/ilicmarko/homebrew-tap) and checks it
+   with `brew install` + `brew test` (only if `HOMEBREW_TAP_TOKEN` is set).
 
-- re-runs the full CI suite (fmt, clippy, tests on Linux/macOS/Windows),
-- builds static binaries for linux x64/arm64 (musl), macOS x64/arm64 and
-  Windows x64,
-- creates the `vX.Y.Z` tag and GitHub release, with the CHANGELOG section as
-  notes plus a `SHA256SUMS` file,
-- publishes the npm packages: `perfetto-mcp-<os>-<cpu>` (one per platform, each
-  with its binary) and then `perfetto-mcp` (the launcher, which picks the right
-  one through `optionalDependencies`), with npm provenance,
-- publishes the `perfetto-mcp` crate to crates.io (only when the
-  `CARGO_REGISTRY_TOKEN` secret is set),
-- regenerates `Formula/perfetto-mcp.rb` in
-  [`ilicmarko/homebrew-tap`](https://github.com/ilicmarko/homebrew-tap), then
-  verifies it with `brew install` + `brew test` (only when the
-  `HOMEBREW_TAP_TOKEN` secret is set).
-
-Pushes that don't change the version are no-ops. Each step skips work that's
-already done, so re-running the workflow (or triggering it manually) after a
-partial failure only finishes what's missing.
+Pushes that don't change the version do nothing. Every step skips work that's
+already done, so re-running the workflow after a partial failure only finishes
+what's missing.
 
 To check the npm packaging locally:
 
@@ -532,8 +496,27 @@ node npm/scripts/build-packages.mjs --artifacts /tmp/art --out npm-dist
 
 </details>
 
+## About this fork
+
+[`ilicmarko/perfetto-mcp`](https://github.com/ilicmarko/perfetto-mcp) is an
+independently maintained fork of
+[`tooluse-labs/perfetto-mcp-rs`](https://github.com/tooluse-labs/perfetto-mcp-rs),
+created by the perfetto-mcp-rs authors. All credit for the original design and
+implementation goes to them.
+
+- The fork may diverge from upstream. For example, it upgrades `rmcp` so the
+  server works with GitHub Copilot CLI.
+- Report issues for this fork [here](https://github.com/ilicmarko/perfetto-mcp/issues),
+  not upstream.
+- Releases, the npm package and crate (`perfetto-mcp`), the Homebrew tap
+  (`ilicmarko/tap`), the install scripts, and `update` / `check-update` all use
+  this fork's releases.
+- The binary is named `perfetto-mcp`, so it can be installed next to upstream's
+  `perfetto-mcp-rs` without clashing.
+- The original license terms (MIT OR Apache-2.0) and copyright notices are retained.
+
 ## License
 
-Dual-licensed under either of [Apache License, Version 2.0](https://github.com/ilicmarko/perfetto-mcp/blob/main/LICENSE-APACHE) or
-[MIT license](https://github.com/ilicmarko/perfetto-mcp/blob/main/LICENSE-MIT) at your option. Contributions are accepted under
-the same terms.
+Dual-licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or
+[MIT license](LICENSE-MIT) at your option. Contributions are accepted under the
+same terms.

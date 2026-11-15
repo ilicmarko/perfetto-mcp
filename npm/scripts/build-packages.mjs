@@ -19,12 +19,14 @@ import { parseArgs } from 'node:util';
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 // npm `os`/`cpu` values -> release asset name produced by release.yml.
+// `pkg` overrides the default `<main>-<os>-<cpu>` package name; npm's spam
+// filter rejected the unscoped `perfetto-mcp-win32-x64`.
 export const PLATFORMS = [
   { os: 'darwin', cpu: 'arm64', asset: 'perfetto-mcp-darwin-arm64' },
   { os: 'darwin', cpu: 'x64', asset: 'perfetto-mcp-darwin-amd64' },
   { os: 'linux', cpu: 'arm64', asset: 'perfetto-mcp-linux-arm64' },
   { os: 'linux', cpu: 'x64', asset: 'perfetto-mcp-linux-amd64' },
-  { os: 'win32', cpu: 'x64', asset: 'perfetto-mcp-windows-amd64.exe' },
+  { os: 'win32', cpu: 'x64', asset: 'perfetto-mcp-windows-amd64.exe', pkg: '@ilicmarko/perfetto-mcp-win32-x64' },
 ];
 
 function cargoVersion() {
@@ -65,10 +67,11 @@ rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 
 const optionalDependencies = {};
-for (const { os, cpu, asset } of PLATFORMS) {
+const binaryPackages = {};
+for (const { os, cpu, asset, pkg } of PLATFORMS) {
   const src = join(artifacts, asset);
   if (!existsSync(src)) throw new Error(`missing release asset: ${src}`);
-  const name = `${main.name}-${os}-${cpu}`;
+  const name = pkg ?? `${main.name}-${os}-${cpu}`;
   const dir = join(out, name.replace('/', '__'));
   const exe = os === 'win32' ? 'perfetto-mcp.exe' : 'perfetto-mcp';
   mkdirSync(join(dir, 'bin'), { recursive: true });
@@ -93,6 +96,7 @@ for (const { os, cpu, asset } of PLATFORMS) {
     preferUnplugged: true,
   });
   optionalDependencies[name] = version;
+  binaryPackages[`${os}-${cpu}`] = name;
   console.error(`built ${name}@${version}`);
 }
 
@@ -103,5 +107,5 @@ chmodSync(join(mainDir, 'bin', 'perfetto-mcp.js'), 0o755);
 for (const file of ['README.md', 'LICENSE-MIT', 'LICENSE-APACHE']) {
   copyFileSync(join(repoRoot, file), join(mainDir, file));
 }
-writeJson(join(mainDir, 'package.json'), { ...main, version, optionalDependencies });
+writeJson(join(mainDir, 'package.json'), { ...main, version, binaryPackages, optionalDependencies });
 console.error(`built ${main.name}@${version}`);

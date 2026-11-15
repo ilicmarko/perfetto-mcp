@@ -122,8 +122,9 @@ parallel test runs.
 `Cargo.toml` is the version source of truth. Release commits follow the format
 `release(v0.13.4): <one-line summary>` (see recent git log). `CHANGELOG.md` is hand-maintained.
 Merging a version bump to `main` releases automatically: `.github/workflows/release.yml` tags
-`v<version>`, publishes the GitHub release and the npm packages (`npm/`, built by
-`npm/scripts/build-packages.mjs`), and — when their secrets exist — the `perfetto-mcp` crate
+`v<version>`, publishes the GitHub release, stages the npm packages (`npm/`, built by
+`npm/scripts/build-packages.mjs`) via OIDC trusted publishing — no `NPM_TOKEN`; a maintainer
+approves staged versions with 2FA — and — when their secrets exist — the `perfetto-mcp` crate
 (`CARGO_REGISTRY_TOKEN`) and the Homebrew formula in `ilicmarko/homebrew-tap`
 (`HOMEBREW_TAP_TOKEN`, rendered by `.github/scripts/render-homebrew-formula.mjs`). It fails if `CHANGELOG.md` has no `### [<version>]` section.
 `docs/roadmap.md` tracks milestone status as a snapshot of intent — individual tasks live in
