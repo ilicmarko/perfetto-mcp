@@ -177,7 +177,7 @@ jobs:
           echo "$got"
           [ "$got" = "perfetto-mcp ${{ needs.plan.outputs.version }}" ]
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.asset_name }}
           path: dist/${{ matrix.asset_name }}
@@ -193,7 +193,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
