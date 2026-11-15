@@ -2,6 +2,15 @@
 
 ## perfetto-mcp-rs 0.x Changes
 
+### [0.18.1](https://github.com/ilicmarko/perfetto-mcp/releases/tag/v0.18.1) (November 15, 2026)
+
+- **npm releases use trusted publishing.** CI stages every npm package over
+  OIDC with provenance (no long-lived token); a maintainer approves each staged
+  version with 2FA on npmjs.com.
+- `update` no longer fails intermittently with "Text file busy" when checking
+  the version of a freshly installed binary on Linux.
+- README reorganized: quick start up top, fork details at the bottom.
+
 ### [0.18.0](https://github.com/ilicmarko/perfetto-mcp/releases/tag/v0.18.0) (November 15, 2026)
 
 - **Copilot CLI can now connect.** Copilot CLI probes with `server/discover`
