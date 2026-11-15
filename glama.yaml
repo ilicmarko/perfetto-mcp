@@ -7,7 +7,7 @@ metadata:
     Perfetto trace files (.pftrace / .perfetto-trace / .bin and other trace_processor-readable formats) via auto-downloaded trace_processor_shell,
     with dedicated Chrome tools for page loads, scroll jank, main-thread
     hotspots, and stdlib module discovery.
-  version: "0.12.2"
+  version: "0.18.1"
   tags:
     - perfetto
     - tracing
